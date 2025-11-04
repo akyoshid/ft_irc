@@ -3,9 +3,11 @@ NAME =		ircserv
 OBJ_DIR =	obj/
 
 INC = \
+			include/Server.hpp
 
 SRC = \
-			src/main.cpp
+			src/main.cpp \
+			src/Server.cpp
 
 OBJ =		$(patsubst %.cpp,$(OBJ_DIR)%.o,$(SRC))
 
