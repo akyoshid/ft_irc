@@ -3,9 +3,13 @@ NAME =		ircserv
 OBJ_DIR =	obj/
 
 INC = \
+			include/Channel.hpp \
+			include/Client.hpp \
 			include/Server.hpp
 
 SRC = \
+			src/Channel.cpp \
+			src/Client.cpp \
 			src/main.cpp \
 			src/Server.cpp
 
