@@ -5,13 +5,15 @@ OBJ_DIR =	obj/
 INC = \
 			include/Channel.hpp \
 			include/Client.hpp \
-			include/Server.hpp
+			include/Server.hpp \
+			include/utils.hpp
 
 SRC = \
 			src/Channel.cpp \
 			src/Client.cpp \
 			src/main.cpp \
-			src/Server.cpp
+			src/Server.cpp \
+			src/utils.cpp
 
 OBJ =		$(patsubst %.cpp,$(OBJ_DIR)%.o,$(SRC))
 
