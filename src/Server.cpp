@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/03 23:57:17 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 15:56:05 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/07 15:58:23 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,8 +28,6 @@ Server::Server(const std::string& portStr, const std::string& password)
     setPort(portStr);
     setPassword(password);
     setServerSocket();
-    std::cout << "port: " << port_ << "\n";
-    std::cout << "password: " << password_ << "\n";
 }
 
 Server::~Server() {
@@ -129,4 +127,7 @@ void Server::setServerSocket() {
         int errsv = errno;
         throw(std::runtime_error(createErrorMessage("listen", errsv)));
     }
+
+    log(LOG_LEVEL_INFO, "System",
+        "Server started listening on port " + int_to_string(port_));
 }
