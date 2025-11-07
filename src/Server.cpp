@@ -128,6 +128,6 @@ void Server::setServerSocket() {
         throw(std::runtime_error(createErrorMessage("listen", errsv)));
     }
 
-    log(LOG_LEVEL_INFO, "System",
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_SYSTEM,
         "Server started listening on port " + int_to_string(port_));
 }

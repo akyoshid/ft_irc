@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:26:18 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 18:54:12 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/07 19:28:04 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,16 +18,8 @@
 #include <sstream>
 #include "../include/utils.hpp"
 
-// Category list
-// - Connection
-// - Auth
-// - Command
-// - Channel
-// - Permission
-// - Network
-// - System
 void log(
-    LogLevel level, const std::string& category, const std::string& message) {
+    LogLevel level, LogCategory category, const std::string& message) {
 
     time_t now = time(NULL);
     char timeStr[20];
@@ -44,16 +36,43 @@ void log(
             color = YELLOW;
             levelStr = "WARN";
             break;
+        case LOG_LEVEL_ERROR:
         default:
             color = RED;
             levelStr = "ERROR";
             break;
     }
 
+    std::string categoryStr;
+    switch (category) {
+        case LOG_CATEGORY_CONNECTION:
+            categoryStr = "Connection";
+            break;
+        case LOG_CATEGORY_AUTH:
+            categoryStr = "Auth";
+            break;
+        case LOG_CATEGORY_COMMAND:
+            categoryStr = "Command";
+            break;
+        case LOG_CATEGORY_CHANNEL:
+            categoryStr = "Channel";
+            break;
+        case LOG_CATEGORY_PERMISSION:
+            categoryStr = "Permission";
+            break;
+        case LOG_CATEGORY_NETWORK:
+            categoryStr = "Network";
+            break;
+        case LOG_CATEGORY_SYSTEM:
+        default:
+            categoryStr = "System";
+            break;
+    }
+
     std::cout
         << "[" << timeStr << "] "
         << "[" << color << levelStr << RESET << "] "
-        << "[" << category << "] "
+        << "[" << categoryStr << "] "
         << message << std::endl;
 }
 

@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:29:49 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 18:43:01 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/07 19:15:05 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,8 +29,18 @@ enum LogLevel {
     LOG_LEVEL_ERROR
 };
 
+enum LogCategory {
+    LOG_CATEGORY_CONNECTION,
+    LOG_CATEGORY_AUTH,
+    LOG_CATEGORY_COMMAND,
+    LOG_CATEGORY_CHANNEL,
+    LOG_CATEGORY_PERMISSION,
+    LOG_CATEGORY_NETWORK,
+    LOG_CATEGORY_SYSTEM
+};
+
 void log(
-    LogLevel level, const std::string& category, const std::string& message);
+    LogLevel level, LogCategory category, const std::string& message);
 std::string createErrorMessage(const std::string& context, int errsv);
 std::string int_to_string(int value);
 
