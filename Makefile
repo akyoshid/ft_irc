@@ -1,5 +1,5 @@
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -g
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
 DEP_FLAGS = -MMD -MP
 
 NAME = ircserv
@@ -14,7 +14,7 @@ SRC = \
 			$(SRC_DIR)/Server.cpp \
 			$(SRC_DIR)/utils.cpp
 
-OBJ = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC))
+OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
 
 .PHONY: all
@@ -23,8 +23,8 @@ all: $(NAME)
 $(NAME): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $@
 
-$(BUILD_DIR)/%.o: %.cpp
-	@mkdir -p $(@D)
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) $(DEP_FLAGS) -I$(INC_DIR) -c $< -o $@
 
 .PHONY: clean

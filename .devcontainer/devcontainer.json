@@ -1,0 +1,29 @@
+{
+	"name": "ft_irc C++ Development",
+	"image": "mcr.microsoft.com/devcontainers/cpp:1-ubuntu-22.04",
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"configureZshAsDefaultShell": true,
+			"installOhMyZsh": true
+		}
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools",
+				"ms-vscode.cpptools-extension-pack",
+				"ms-vscode.cmake-tools"
+			],
+			"settings": {
+				"C_Cpp.default.cppStandard": "c++98",
+				"C_Cpp.default.compilerPath": "/usr/bin/c++",
+				"C_Cpp.default.includePath": [
+					"${workspaceFolder}/include"
+				]
+			}
+		}
+	},
+	"postCreateCommand": "sudo apt-get update && sudo apt-get install -y valgrind && make",
+	"remoteUser": "vscode"
+}
