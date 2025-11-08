@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:26:18 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 19:28:04 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/07 23:19:00 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,7 @@
 #include <sstream>
 #include "../include/utils.hpp"
 
-void log(
+std::string createLog(
     LogLevel level, LogCategory category, const std::string& message) {
 
     time_t now = time(NULL);
@@ -69,11 +69,17 @@ void log(
             break;
     }
 
-    std::cout
-        << "[" << timeStr << "] "
+    std::ostringstream oss;
+    oss << "[" << timeStr << "] "
         << "[" << color << levelStr << RESET << "] "
         << "[" << categoryStr << "] "
-        << message << std::endl;
+        << message;
+    return oss.str();
+}
+
+void log(
+    LogLevel level, LogCategory category, const std::string& message) {
+    std::cout << createLog(level, category, message) << std::endl;
 }
 
 std::string createErrorMessage(const std::string& context, int errsv) {

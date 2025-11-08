@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:29:49 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 19:15:05 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/07 23:22:12 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,6 +39,8 @@ enum LogCategory {
     LOG_CATEGORY_SYSTEM
 };
 
+std::string createLog(
+    LogLevel level, LogCategory category, const std::string& message);
 void log(
     LogLevel level, LogCategory category, const std::string& message);
 std::string createErrorMessage(const std::string& context, int errsv);
