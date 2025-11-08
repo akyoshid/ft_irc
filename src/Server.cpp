@@ -127,7 +127,8 @@ void Server::setServerSocket() {
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port_);
-  if (bind(serverSocket_, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
+  if (bind(serverSocket_, reinterpret_cast<struct sockaddr*>(&address),
+           sizeof(address)) < 0) {
     int errsv = errno;
     throw(std::runtime_error(createErrorMessage("bind", errsv)));
   }
@@ -211,7 +212,8 @@ void Server::acceptNewConnection() {
     // Accept new connection
     // This creates a new socket file descriptor for the client
     int clientFd =
-        accept(serverSocket_, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
+        accept(serverSocket_, reinterpret_cast<struct sockaddr*>(&clientAddr),
+               &clientAddrLen);
     if (clientFd < 0) {
       // No more waiting for connections
       if (errno == EAGAIN || errno == EWOULDBLOCK) return;
