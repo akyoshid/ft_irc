@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/03 23:57:17 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/08 04:58:47 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 05:32:29 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <poll.h>
+#include <signal.h>
 #include <string>
 #include <cctype>
 #include <stdexcept>
@@ -27,6 +28,8 @@
 #include <algorithm>
 #include "../include/Server.hpp"
 #include "../include/utils.hpp"
+
+extern volatile sig_atomic_t g_shutdown;
 
 Server::Server(const std::string& portStr, const std::string& password)
     : serverSocket_(INVALID_FD), epollFd_(INVALID_FD) {
@@ -268,7 +271,7 @@ void Server::disconnectClient(int clientFd) {
 void Server::recvFromClient(Client* client) {
     char buffer[BUFFER_SIZE];
     // Read all available data because it's edge-triggered mode
-    while (true) {
+    while (1) {
         ssize_t bytesRead = recv(client->socketFd_, buffer, BUFFER_SIZE - 1, 0);
         if (bytesRead > 0) {
             client->readBuffer_.append(buffer, bytesRead);
@@ -346,9 +349,13 @@ void Server::sendToClient(Client* client) {
 // run
 // ==========================================
 void Server::run() {
-    while (1) {
+    while (!g_shutdown) {
         int nfds = epoll_wait(epollFd_, events_, MAX_EVENTS, 30000);
         if (nfds < 0) {
+            if (errno == EINTR) {
+                // In the case of interruption by a signal
+                continue;
+            }
             throw(std::runtime_error(
                     createLog(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
                         createErrorMessage("epoll_wait", errno))));
