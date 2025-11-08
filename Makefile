@@ -46,3 +46,11 @@ val:
 	--show-leak-kinds=definite,indirect,possible \
 	--track-fds=yes \
 	./$(NAME) 6667 password
+
+.PHONY: format
+format:
+	clang-format -i $(SRC_DIR)/*.cpp $(INC_DIR)/*.hpp
+
+.PHONY: lint
+lint:
+	clang-tidy $(SRC) -- -I$(INC_DIR) -std=c++98
