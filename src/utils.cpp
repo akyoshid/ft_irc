@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:26:18 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 23:19:00 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 04:38:00 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,9 +37,13 @@ std::string createLog(
             levelStr = "WARN";
             break;
         case LOG_LEVEL_ERROR:
-        default:
             color = RED;
             levelStr = "ERROR";
+            break;
+        case LOG_LEVEL_DEBUG:
+        default:
+            color = BLUE;
+            levelStr = "DEBUG";
             break;
     }
 

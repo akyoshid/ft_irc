@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 14:29:49 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/07 23:22:12 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 04:37:42 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,8 @@
 enum LogLevel {
     LOG_LEVEL_INFO,
     LOG_LEVEL_WARNING,
-    LOG_LEVEL_ERROR
+    LOG_LEVEL_ERROR,
+    LOG_LEVEL_DEBUG
 };
 
 enum LogCategory {
