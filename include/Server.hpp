@@ -45,12 +45,12 @@ class Server {
   void setServerSocket();
   void acceptNewConnection();
   void disconnectClient(int clientFd);
-  void addToEpoll(int fd, uint32_t events);
-  void modifyEpollEvents(int fd, uint32_t events);
-  void removeFromEpoll(int fd);
+  void addToEpoll(int fd, uint32_t events) const;
+  void modifyEpollEvents(int fd, uint32_t events) const;
+  void removeFromEpoll(int fd) const;
   void recvFromClient(Client* client);
   void sendToClient(Client* client);
-  void processMessage(Client* client, const std::string& message);
+  static void processMessage(Client* client, const std::string& message);
   Server();                              // = delete
   Server(const Server& src);             // = delete
   Server& operator=(const Server& src);  // = delete

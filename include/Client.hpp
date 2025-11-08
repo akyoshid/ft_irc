@@ -17,7 +17,7 @@
 
 class Client {
  public:
-  Client(int socketFd, std::string ip);
+  Client(int socketFd, const std::string& ip);
   ~Client();
   int socketFd_;
   std::string ip_;

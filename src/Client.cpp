@@ -14,7 +14,7 @@
 
 #include <string>
 
-Client::Client(int socketFd, std::string ip)
+Client::Client(int socketFd, const std::string& ip)
     : socketFd_(socketFd), ip_(ip), authenticated_(false), registered_(false) {}
 
 Client::~Client() {}

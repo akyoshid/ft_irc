@@ -79,7 +79,7 @@ void Server::setPassword(const std::string& password) {
   if (len < 8)
     throw(
         std::runtime_error("Invalid password: must be at least 8 characters"));
-  else if (len > 64)
+  if (len > 64)
     throw(
         std::runtime_error("Invalid password: must be at most 64 characters"));
   for (size_t i = 0; i < len; ++i) {
@@ -127,7 +127,7 @@ void Server::setServerSocket() {
   address.sin_family = AF_INET;
   address.sin_addr.s_addr = INADDR_ANY;
   address.sin_port = htons(port_);
-  if (bind(serverSocket_, (struct sockaddr*)&address, sizeof(address)) < 0) {
+  if (bind(serverSocket_, reinterpret_cast<struct sockaddr*>(&address), sizeof(address)) < 0) {
     int errsv = errno;
     throw(std::runtime_error(createErrorMessage("bind", errsv)));
   }
@@ -171,7 +171,7 @@ void Server::setServerSocket() {
 // ==========================================
 // epoll
 // ==========================================
-void Server::addToEpoll(int fd, uint32_t events) {
+void Server::addToEpoll(int fd, uint32_t events) const {
   struct epoll_event ev;
   ev.events = events | EPOLLET;
   ev.data.fd = fd;
@@ -181,7 +181,7 @@ void Server::addToEpoll(int fd, uint32_t events) {
   }
 }
 
-void Server::modifyEpollEvents(int fd, uint32_t events) {
+void Server::modifyEpollEvents(int fd, uint32_t events) const {
   struct epoll_event ev;
   ev.events = events | EPOLLET;
   ev.data.fd = fd;
@@ -192,7 +192,7 @@ void Server::modifyEpollEvents(int fd, uint32_t events) {
   }
 }
 
-void Server::removeFromEpoll(int fd) {
+void Server::removeFromEpoll(int fd) const {
   if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, NULL) < 0) {
     throw(
         std::runtime_error(createLog(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
@@ -211,7 +211,7 @@ void Server::acceptNewConnection() {
     // Accept new connection
     // This creates a new socket file descriptor for the client
     int clientFd =
-        accept(serverSocket_, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        accept(serverSocket_, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrLen);
     if (clientFd < 0) {
       // No more waiting for connections
       if (errno == EAGAIN || errno == EWOULDBLOCK) return;
@@ -291,18 +291,16 @@ void Server::recvFromClient(Client* client) {
       // The client closed the connection
       disconnectClient(client->socketFd_);
       return;
-    } else {
-      if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        // No more data available (normal for non-blocking socket)
-        return;
-      } else {
-        // recv() failed
-        log(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
-            createErrorMessage("recv", errno));
-        disconnectClient(client->socketFd_);
-        return;
-      }
     }
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      // No more data available (normal for non-blocking socket)
+      return;
+    }
+    // recv() failed
+    log(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
+        createErrorMessage("recv", errno));
+    disconnectClient(client->socketFd_);
+    return;
   }
 }
 
@@ -322,13 +320,12 @@ void Server::sendToClient(Client* client) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         // Send buffer is full (retry later)
         return;
-      } else {
-        // send() failed
-        log(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
-            createErrorMessage("send", errno));
-        disconnectClient(client->socketFd_);
-        return;
       }
+      // send() failed
+      log(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
+          createErrorMessage("send", errno));
+      disconnectClient(client->socketFd_);
+      return;
     }
   }
   // Remove the EPOLLOUT event after all send() are completed
@@ -381,6 +378,9 @@ void Server::run() {
 // ==========================================
 // Process a message
 // ==========================================
+// NOTE: Currently static as it doesn't access Server member variables.
+// This may change in the future when implementing IRC command handling
+// that requires access to server state (e.g., password_, clients_).
 void Server::processMessage(Client* client, const std::string& message) {
   // tmp
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, client->ip_ + ": " + message);
