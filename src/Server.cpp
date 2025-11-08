@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
+/*   By: reasuke <reasuke@student.42tokyo.jp>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/03 23:57:17 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/04 00:27:23 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 18:00:18 by reasuke          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,7 +14,7 @@
 #include <cctype>
 #include <stdexcept>
 #include <iostream>
-#include "../include/Server.hpp"
+#include "Server.hpp"
 
 Server::Server(const std::string& portStr, const std::string& password) {
     setPort(portStr);
