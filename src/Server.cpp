@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
+/*   By: reasuke <reasuke@student.42tokyo.jp>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/03 23:57:17 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/08 05:32:29 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 18:02:31 by reasuke          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,8 +26,8 @@
 #include <cerrno>
 #include <map>
 #include <algorithm>
-#include "../include/Server.hpp"
-#include "../include/utils.hpp"
+#include "Server.hpp"
+#include "utils.hpp"
 
 extern volatile sig_atomic_t g_shutdown;
 

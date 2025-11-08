@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
+/*   By: reasuke <reasuke@student.42tokyo.jp>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/03 07:47:24 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/08 05:34:46 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 18:02:52 by reasuke          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,8 +14,8 @@
 #include <string>
 #include <iostream>
 #include <stdexcept>
-#include "../include/Server.hpp"
-#include "../include/utils.hpp"
+#include "Server.hpp"
+#include "utils.hpp"
 
 volatile sig_atomic_t g_shutdown = 0;
 

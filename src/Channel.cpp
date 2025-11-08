@@ -3,14 +3,14 @@
 /*                                                        :::      ::::::::   */
 /*   Channel.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
+/*   By: reasuke <reasuke@student.42tokyo.jp>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/04 00:37:03 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/04 00:38:04 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/08 18:00:00 by reasuke          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../include/Channel.hpp"
+#include "Channel.hpp"
 
 Channel::Channel() {
 }
