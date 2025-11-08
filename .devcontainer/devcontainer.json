@@ -12,8 +12,7 @@
 		"vscode": {
 			"extensions": [
 				"ms-vscode.cpptools",
-				"ms-vscode.cpptools-extension-pack",
-				"ms-vscode.cmake-tools"
+				"ms-vscode.cpptools-extension-pack"
 			],
 			"settings": {
 				"C_Cpp.default.cppStandard": "c++98",
