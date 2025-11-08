@@ -1,46 +1,47 @@
-NAME =		ircserv
+CXX = c++
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
+DEP_FLAGS = -MMD -MP
 
-OBJ_DIR =	obj/
-
-INC = \
-			include/Channel.hpp \
-			include/Client.hpp \
-			include/Server.hpp
+NAME = ircserv
+BUILD_DIR = build
+INC_DIR = include
+SRC_DIR = src
 
 SRC = \
-			src/Channel.cpp \
-			src/Client.cpp \
-			src/main.cpp \
-			src/Server.cpp
+			$(SRC_DIR)/Channel.cpp \
+			$(SRC_DIR)/Client.cpp \
+			$(SRC_DIR)/main.cpp \
+			$(SRC_DIR)/Server.cpp
 
-OBJ =		$(patsubst %.cpp,$(OBJ_DIR)%.o,$(SRC))
+OBJ = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC))
+DEP = $(OBJ:.o=.d)
 
-CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -g
-
-RM = rm -f
-
+.PHONY: all
 all: $(NAME)
 
 $(NAME): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $@
 
-$(OBJ_DIR)%.o: %.cpp $(INC)
+$(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(@D)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEP_FLAGS) -I$(INC_DIR) -c $< -o $@
 
+.PHONY: clean
 clean:
-	$(RM) -r $(OBJ_DIR)
+	$(RM) -r $(BUILD_DIR)
 
+-include $(DEP)
+
+.PHONY: fclean
 fclean: clean
 	$(RM) $(NAME)
 
+.PHONY: re
 re: fclean all
 
+.PHONY: val
 val:
 	valgrind --leak-check=full --leak-check=full \
 	--show-leak-kinds=definite,indirect,possible \
 	--track-fds=yes \
 	./$(NAME) 6667 password
-
-.PHONY: all clean fclean re val
