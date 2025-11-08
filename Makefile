@@ -1,5 +1,5 @@
 CXX = c++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -g
 DEP_FLAGS = -MMD -MP
 
 NAME = ircserv
@@ -11,7 +11,8 @@ SRC = \
 			$(SRC_DIR)/Channel.cpp \
 			$(SRC_DIR)/Client.cpp \
 			$(SRC_DIR)/main.cpp \
-			$(SRC_DIR)/Server.cpp
+			$(SRC_DIR)/Server.cpp \
+			$(SRC_DIR)/utils.cpp
 
 OBJ = $(patsubst %.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
@@ -41,7 +42,7 @@ re: fclean all
 
 .PHONY: val
 val:
-	valgrind --leak-check=full --leak-check=full \
+	valgrind --leak-check=full \
 	--show-leak-kinds=definite,indirect,possible \
 	--track-fds=yes \
 	./$(NAME) 6667 password
