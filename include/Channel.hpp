@@ -11,15 +11,16 @@
 /* ************************************************************************** */
 
 #ifndef INCLUDE_CHANNEL_HPP_
-# define INCLUDE_CHANNEL_HPP_
+#define INCLUDE_CHANNEL_HPP_
 
 class Channel {
  public:
-    Channel();
-    ~Channel();
+  Channel();
+  ~Channel();
+
  private:
-    Channel(const Channel& src);  // = delete
-    Channel& operator=(const Channel& src);  // = delete
+  Channel(const Channel& src);             // = delete
+  Channel& operator=(const Channel& src);  // = delete
 };
 
 #endif

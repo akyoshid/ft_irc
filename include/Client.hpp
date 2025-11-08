@@ -11,26 +11,27 @@
 /* ************************************************************************** */
 
 #ifndef INCLUDE_CLIENT_HPP_
-# define INCLUDE_CLIENT_HPP_
+#define INCLUDE_CLIENT_HPP_
 
-# include <string>
+#include <string>
 
 class Client {
  public:
-    Client(int socketFd, std::string ip);
-    ~Client();
-    int socketFd_;
-    std::string ip_;
-    std::string nickname_;
-    std::string username_;
-    std::string readBuffer_;
-    std::string writeBuffer_;
-    bool authenticated_;
-    bool registered_;
+  Client(int socketFd, std::string ip);
+  ~Client();
+  int socketFd_;
+  std::string ip_;
+  std::string nickname_;
+  std::string username_;
+  std::string readBuffer_;
+  std::string writeBuffer_;
+  bool authenticated_;
+  bool registered_;
+
  private:
-    Client();  // = delete
-    Client(const Client& src);  // = delete
-    Client& operator=(const Client& src);  // = delete
+  Client();                              // = delete
+  Client(const Client& src);             // = delete
+  Client& operator=(const Client& src);  // = delete
 };
 
 #endif

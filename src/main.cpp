@@ -11,46 +11,45 @@
 /* ************************************************************************** */
 
 #include <signal.h>
-#include <string>
+
 #include <iostream>
 #include <stdexcept>
+#include <string>
+
 #include "Server.hpp"
 #include "utils.hpp"
 
 volatile sig_atomic_t g_shutdown = 0;
 
 namespace {
-    void checkUsage(int argc) {
-        if (argc != 3)
-            throw(std::runtime_error(
-                "Usage: ./ircserv <port> <password>"));
-    }
+void checkUsage(int argc) {
+  if (argc != 3)
+    throw(std::runtime_error("Usage: ./ircserv <port> <password>"));
+}
 
-    void signalHandler(int signum) {
-        if (signum == SIGINT || signum == SIGTERM)
-            g_shutdown = 1;
-    }
+void signalHandler(int signum) {
+  if (signum == SIGINT || signum == SIGTERM) g_shutdown = 1;
+}
 
-    void setupSignalHandlers() {
-        signal(SIGINT, signalHandler);
-        signal(SIGTERM, signalHandler);
-        signal(SIGPIPE, SIG_IGN);
-    }
+void setupSignalHandlers() {
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
+  signal(SIGPIPE, SIG_IGN);
+}
 }  // namespace
 
-int main(int argc, char *argv[]) {
-    try {
-        checkUsage(argc);
-        setupSignalHandlers();
-        Server server(argv[1], argv[2]);
-        server.run();
-    } catch (std::exception& e) {
-        std::cerr << e.what() << std::endl;
-        log(LOG_LEVEL_INFO, LOG_CATEGORY_SYSTEM,
-            "Server stopped due to critical error");
-        return 1;
-    }
+int main(int argc, char* argv[]) {
+  try {
+    checkUsage(argc);
+    setupSignalHandlers();
+    Server server(argv[1], argv[2]);
+    server.run();
+  } catch (std::exception& e) {
+    std::cerr << e.what() << std::endl;
     log(LOG_LEVEL_INFO, LOG_CATEGORY_SYSTEM,
-        "Server stopped successfully");
-    return 0;
+        "Server stopped due to critical error");
+    return 1;
+  }
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_SYSTEM, "Server stopped successfully");
+  return 0;
 }
