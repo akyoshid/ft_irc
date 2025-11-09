@@ -11,7 +11,8 @@ CommandParser::~CommandParser() {}
 
 void CommandParser::processMessage(Client* client, const std::string& message) {
   // Stub implementation: Just log the message
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, client->ip_ + ": " + message);
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      client->getIp() + ": " + message);
 
   // TODO: Future implementation will:
   // 1. Parse the IRC command (PASS, NICK, USER, JOIN, etc.)
