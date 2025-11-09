@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cerrno>
+#include <csignal>
 #include <cstring>
 #include <stdexcept>
 #include <string>

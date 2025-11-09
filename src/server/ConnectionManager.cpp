@@ -1,4 +1,4 @@
-#include "ConnectionManager.hpp"
+#include "server/ConnectionManager.hpp"
 
 #include <arpa/inet.h>
 #include <fcntl.h>
@@ -95,8 +95,7 @@ ReceiveResult ConnectionManager::receiveData(
 
   // Read all available data (edge-triggered mode)
   while (true) {
-    ssize_t bytesRead =
-        recv(client->getSocketFd(), buffer, BUFFER_SIZE - 1, 0);
+    ssize_t bytesRead = recv(client->getSocketFd(), buffer, BUFFER_SIZE - 1, 0);
 
     if (bytesRead > 0) {
       client->getReadBuffer().append(buffer, bytesRead);
