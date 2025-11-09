@@ -28,9 +28,9 @@
 #include <string>
 #include <vector>
 
-#include "server/CommandParser.hpp"
-#include "server/ConnectionManager.hpp"
-#include "server/EventLoop.hpp"
+#include "CommandParser.hpp"
+#include "ConnectionManager.hpp"
+#include "EventLoop.hpp"
 #include "utils.hpp"
 
 extern volatile sig_atomic_t g_shutdown;

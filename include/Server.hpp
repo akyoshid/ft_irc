@@ -17,9 +17,9 @@
 
 #include <string>
 
-#include "server/CommandParser.hpp"
-#include "server/ConnectionManager.hpp"
-#include "server/EventLoop.hpp"
+#include "CommandParser.hpp"
+#include "ConnectionManager.hpp"
+#include "EventLoop.hpp"
 
 #define INVALID_FD -1
 

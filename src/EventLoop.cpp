@@ -1,4 +1,4 @@
-#include "server/EventLoop.hpp"
+#include "EventLoop.hpp"
 
 #include <sys/epoll.h>
 #include <unistd.h>
@@ -64,6 +64,7 @@ void EventLoop::removeFd(int fd) const {
   }
 }
 
-int EventLoop::wait(struct epoll_event* events, int maxEvents, int timeout) const {
+int EventLoop::wait(struct epoll_event* events, int maxEvents,
+                    int timeout) const {
   return epoll_wait(epollFd_, events, maxEvents, timeout);
 }
