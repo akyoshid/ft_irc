@@ -17,6 +17,7 @@
 
 #include <string>
 
+#include "ChannelManager.hpp"
 #include "CommandParser.hpp"
 #include "ConnectionManager.hpp"
 #include "EventLoop.hpp"
@@ -43,6 +44,7 @@ class Server {
   EventLoop eventLoop_;
   ConnectionManager connManager_;
   UserManager userManager_;
+  ChannelManager channelManager_;
   CommandParser cmdParser_;
 
   // Helper methods
