@@ -105,8 +105,11 @@ void Server::handleEvent(const struct epoll_event& event) {
   }
 
   // Re-check if client still exists after read (might have disconnected)
-  if (connManager_.getClient(fd) && (events & EPOLLOUT)) {
-    handleClientWrite(client);
+  if (events & EPOLLOUT) {
+    client = connManager_.getClient(fd);
+    if (client) {
+      handleClientWrite(client);
+    }
   }
 }
 

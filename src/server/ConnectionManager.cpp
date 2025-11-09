@@ -55,7 +55,9 @@ Client* ConnectionManager::acceptConnection(int serverFd) {
     newClient = new Client(clientFd, std::string(clientIp));
     clients_[clientFd] = newClient;
   } catch (...) {
-    delete newClient;
+    if (newClient != NULL) {
+      delete newClient;
+    }
     close(clientFd);
     throw;
   }
