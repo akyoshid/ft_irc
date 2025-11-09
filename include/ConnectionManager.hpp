@@ -1,7 +1,6 @@
 #ifndef SRC_SERVER_CONNECTIONMANAGER_HPP_
 #define SRC_SERVER_CONNECTIONMANAGER_HPP_
 
-#include <map>
 #include <string>
 #include <vector>
 
@@ -24,9 +23,9 @@ enum SendResult {
   SEND_ERROR      // Error occurred during send
 };
 
-// ConnectionManager: Manages user connections and I/O operations
-// Handles accepting new connections, disconnecting users,
-// receiving and sending data
+// ConnectionManager: Manages I/O operations for user connections
+// Handles accepting new connections, receiving and sending data
+// Note: User management is handled by UserManager
 class ConnectionManager {
  public:
   ConnectionManager();
@@ -35,14 +34,8 @@ class ConnectionManager {
   // Accept a new connection from the server socket
   // Returns: Pointer to new User object, or NULL if no connection available
   // Throws: std::runtime_error on error
+  // Note: Caller is responsible for adding user to UserManager
   User* acceptConnection(int serverFd);
-
-  // Disconnect a user and clean up resources
-  // Removes from map, closes socket, deletes User object
-  void disconnect(int userFd);
-
-  // Disconnect all users (used in destructor)
-  void disconnectAll();
 
   // Receive data from a user
   // Reads data into read buffer, extracts complete messages
@@ -56,16 +49,7 @@ class ConnectionManager {
   // SEND_ERROR
   SendResult sendData(User* user);
 
-  // Get a user by file descriptor
-  // Returns: Pointer to User, or NULL if not found
-  User* getUser(int fd);
-
-  // Get all users (for Server class access)
-  const std::map<int, User*>& getUsers() const;
-
  private:
-  std::map<int, User*> users_;
-
   ConnectionManager(const ConnectionManager& src);             // = delete
   ConnectionManager& operator=(const ConnectionManager& src);  // = delete
 };

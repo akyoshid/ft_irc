@@ -17,8 +17,9 @@
 
 ConnectionManager::ConnectionManager() {}
 
-ConnectionManager::~ConnectionManager() { disconnectAll(); }
+ConnectionManager::~ConnectionManager() {}
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 User* ConnectionManager::acceptConnection(int serverFd) {
   struct sockaddr_in userAddr;
   socklen_t userAddrLen = sizeof(userAddr);
@@ -47,12 +48,11 @@ User* ConnectionManager::acceptConnection(int serverFd) {
   char userIp[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &userAddr.sin_addr, userIp, INET_ADDRSTRLEN);
 
-  // Create and store new user
+  // Create new user
   // Use try-catch for exception safety (issue #24)
   User* newUser = NULL;
   try {
     newUser = new User(userFd, std::string(userIp));
-    users_[userFd] = newUser;
   } catch (...) {
     delete newUser;  // NULL-safe in C++
     close(userFd);
@@ -60,30 +60,6 @@ User* ConnectionManager::acceptConnection(int serverFd) {
   }
 
   return newUser;
-}
-
-void ConnectionManager::disconnect(int userFd) {
-  std::map<int, User*>::iterator it = users_.find(userFd);
-  if (it == users_.end()) {
-    log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
-        "Attempted to disconnect a non-existent user");
-    return;
-  }
-
-  std::string ip = it->second->getIp();
-  delete it->second;  // User destructor closes the socket
-  users_.erase(it);
-
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,
-      "Disconnected successfully: " + ip);
-}
-
-void ConnectionManager::disconnectAll() {
-  for (std::map<int, User*>::iterator it = users_.begin(); it != users_.end();
-       ++it) {
-    delete it->second;  // User destructor closes the socket
-  }
-  users_.clear();
 }
 
 ReceiveResult ConnectionManager::receiveData(
@@ -167,14 +143,4 @@ SendResult ConnectionManager::sendData(User* user) {
 
   // All data sent
   return SEND_COMPLETE;
-}
-
-User* ConnectionManager::getUser(int fd) {
-  std::map<int, User*>::iterator it = users_.find(fd);
-  if (it == users_.end()) return NULL;
-  return it->second;
-}
-
-const std::map<int, User*>& ConnectionManager::getUsers() const {
-  return users_;
 }

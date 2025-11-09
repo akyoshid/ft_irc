@@ -20,6 +20,7 @@
 #include "CommandParser.hpp"
 #include "ConnectionManager.hpp"
 #include "EventLoop.hpp"
+#include "UserManager.hpp"
 
 #define INVALID_FD -1
 
@@ -41,6 +42,7 @@ class Server {
   int serverSocket_;
   EventLoop eventLoop_;
   ConnectionManager connManager_;
+  UserManager userManager_;
   CommandParser cmdParser_;
 
   // Helper methods

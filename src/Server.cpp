@@ -43,7 +43,7 @@ Server::Server(const std::string& portStr, const std::string& password)
 }
 
 Server::~Server() {
-  connManager_.disconnectAll();
+  // UserManager destructor will clean up all users automatically
   if (serverSocket_ != INVALID_FD) close(serverSocket_);
 }
 
@@ -93,7 +93,7 @@ void Server::handleEvent(const struct epoll_event& event) {
   }
 
   // User socket: data I/O
-  User* user = connManager_.getUser(fd);
+  User* user = userManager_.getUserByFd(fd);
   if (!user) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
         "Event for non-existent user");
@@ -106,7 +106,7 @@ void Server::handleEvent(const struct epoll_event& event) {
 
   // Re-check if user still exists after read (might have disconnected)
   if (events & EPOLLOUT) {
-    user = connManager_.getUser(fd);
+    user = userManager_.getUserByFd(fd);
     if (user) {
       handleUserWrite(user);
     }
@@ -120,14 +120,16 @@ void Server::acceptConnections() {
     if (!newUser) break;  // No more connections (EAGAIN)
 
     // Check user limit to prevent resource exhaustion
-    // Note: acceptConnection() already added the user to the map
-    if (connManager_.getUsers().size() > kMaxUsers) {
+    if (userManager_.getUsers().size() >= kMaxUsers) {
       log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
           "Maximum user limit reached, rejecting connection from " +
               newUser->getIp());
-      connManager_.disconnect(newUser->getSocketFd());
+      delete newUser;  // User destructor closes the socket
       continue;
     }
+
+    // Add user to manager
+    userManager_.addUser(newUser);
 
     eventLoop_.addFd(newUser->getSocketFd(), EPOLLIN);
 
@@ -142,7 +144,7 @@ void Server::acceptConnections() {
 }
 
 void Server::handleUserError(int fd) {
-  User* user = connManager_.getUser(fd);
+  User* user = userManager_.getUserByFd(fd);
   if (user) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
         "Connection closed unexpectedly: " + user->getIp());
@@ -183,7 +185,7 @@ void Server::handleUserWrite(User* user) {
 
 void Server::disconnectUser(int fd) {
   eventLoop_.removeFd(fd);
-  connManager_.disconnect(fd);
+  userManager_.removeUser(fd);
 }
 
 // ==========================================

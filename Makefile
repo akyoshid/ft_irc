@@ -15,7 +15,8 @@ SRC = \
 			$(SRC_DIR)/utils.cpp \
 			$(SRC_DIR)/EventLoop.cpp \
 			$(SRC_DIR)/ConnectionManager.cpp \
-			$(SRC_DIR)/CommandParser.cpp
+			$(SRC_DIR)/CommandParser.cpp \
+			$(SRC_DIR)/UserManager.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
