@@ -39,6 +39,9 @@ class UserManager {
   bool isNicknameInUse(const std::string& nickname) const;
 
   // Update user's nickname (maintains nickname index)
+  // NOTE: This method does NOT check for nickname uniqueness.
+  //       Callers (e.g., NICK command handler) MUST verify uniqueness
+  //       using isNicknameInUse() before calling this method.
   // oldNick: Empty string if user has no nickname yet
   // newNick: New nickname to set
   void updateNickname(User* user, const std::string& oldNick,
