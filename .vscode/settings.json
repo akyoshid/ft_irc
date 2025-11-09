@@ -11,5 +11,5 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 2
   },
-  "files.insertFinalNewline": true,
+  "files.insertFinalNewline": true
 }
