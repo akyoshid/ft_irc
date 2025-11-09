@@ -6,5 +6,8 @@ RUN apt-get update && apt-get install -y \
     clang-tidy \
     irssi \
     htop \
+    netcat-openbsd \
+    telnet \
+    ngircd \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
