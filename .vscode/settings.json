@@ -11,5 +11,10 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 2
   },
-  "files.insertFinalNewline": true
+  "files.insertFinalNewline": true,
+  "files.associations": {
+    "compare": "cpp",
+    "memory_resource": "cpp",
+    "type_traits": "cpp"
+  }
 }

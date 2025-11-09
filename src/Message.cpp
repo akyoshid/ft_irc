@@ -2,6 +2,12 @@
 
 const std::string WHITESPACE = " ";
 
+const std::string& message::getCommand() const { return (command); }
+
+const std::vector<std::string>& message::getParams() const { return (params); }
+
+const std::string& message::getTrail() const { return (trail); }
+
 void message::ltrim(std::string& s, const std::string& chars) {
   std::string::size_type pos = s.find_first_not_of(chars);
   if (pos == std::string::npos) {
