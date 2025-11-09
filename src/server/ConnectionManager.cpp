@@ -91,6 +91,7 @@ void ConnectionManager::disconnectAll() {
 
 ReceiveResult ConnectionManager::receiveData(
     Client* client, std::vector<std::string>& messages) {
+  (void)this;  // Suppress unused warning
   char buffer[BUFFER_SIZE];
 
   // Read all available data (edge-triggered mode)
@@ -140,6 +141,7 @@ ReceiveResult ConnectionManager::receiveData(
 }
 
 SendResult ConnectionManager::sendData(Client* client) {
+  (void)this;  // Suppress unused warning
   std::string& writeBuf = client->getWriteBuffer();
 
   if (writeBuf.empty()) {

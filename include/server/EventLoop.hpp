@@ -21,22 +21,22 @@ class EventLoop {
   // Add a file descriptor to epoll
   // events: Events to monitor (EPOLLIN, EPOLLOUT, etc.)
   // EPOLLET (edge-triggered) is automatically added internally
-  void addFd(int fd, uint32_t events);
+  void addFd(int fd, uint32_t events) const;
 
   // Modify the events being monitored by epoll
   // events: New events to monitor
   // EPOLLET (edge-triggered) is automatically added internally
-  void modifyFd(int fd, uint32_t events);
+  void modifyFd(int fd, uint32_t events) const;
 
   // Remove a file descriptor from epoll
-  void removeFd(int fd);
+  void removeFd(int fd) const;
 
   // Wait for events
   // events: Array to store events
   // maxEvents: Maximum size of the array
   // timeout: Timeout in milliseconds, -1 for infinite wait
   // Returns: Number of events occurred, -1 on error
-  int wait(struct epoll_event* events, int maxEvents, int timeout);
+  int wait(struct epoll_event* events, int maxEvents, int timeout) const;
 
  private:
   int epollFd_;

@@ -10,10 +10,11 @@ CommandParser::CommandParser() {}
 CommandParser::~CommandParser() {}
 
 void CommandParser::processMessage(Client* client, const std::string& message) {
+  (void)this;  // Suppress unused warning
   // Stub implementation: Just log the message
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, client->getIp() + ": " + message);
 
-  // TODO: Future implementation will:
+  // TODO(unknown): Future implementation will:
   // 1. Parse the IRC command (PASS, NICK, USER, JOIN, etc.)
   // 2. Validate command syntax
   // 3. Check client authentication/registration status

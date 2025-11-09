@@ -27,7 +27,7 @@ void EventLoop::create() {
   }
 }
 
-void EventLoop::addFd(int fd, uint32_t events) {
+void EventLoop::addFd(int fd, uint32_t events) const {
   struct epoll_event ev;
   std::memset(&ev, 0, sizeof(ev));
   // Always use edge-triggered mode (EPOLLET)
@@ -41,7 +41,7 @@ void EventLoop::addFd(int fd, uint32_t events) {
   }
 }
 
-void EventLoop::modifyFd(int fd, uint32_t events) {
+void EventLoop::modifyFd(int fd, uint32_t events) const {
   struct epoll_event ev;
   std::memset(&ev, 0, sizeof(ev));
   // Always use edge-triggered mode (EPOLLET)
@@ -55,7 +55,7 @@ void EventLoop::modifyFd(int fd, uint32_t events) {
   }
 }
 
-void EventLoop::removeFd(int fd) {
+void EventLoop::removeFd(int fd) const {
   // In Linux 2.6.9+, the event argument can be NULL for EPOLL_CTL_DEL
   if (epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, NULL) < 0) {
     int errsv = errno;
@@ -64,6 +64,6 @@ void EventLoop::removeFd(int fd) {
   }
 }
 
-int EventLoop::wait(struct epoll_event* events, int maxEvents, int timeout) {
+int EventLoop::wait(struct epoll_event* events, int maxEvents, int timeout) const {
   return epoll_wait(epollFd_, events, maxEvents, timeout);
 }

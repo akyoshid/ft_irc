@@ -36,11 +36,7 @@
 extern volatile sig_atomic_t g_shutdown;
 
 Server::Server(const std::string& portStr, const std::string& password)
-    : password_(password),
-      serverSocket_(INVALID_FD),
-      eventLoop_(),
-      connManager_(),
-      cmdParser_() {
+    : password_(password), serverSocket_(INVALID_FD) {
   validateAndSetPort(portStr);
   validatePassword(password);
   setupServerSocket();
@@ -197,14 +193,13 @@ void Server::validateAndSetPort(const std::string& portStr) {
   }
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void Server::validatePassword(const std::string& password) {
   size_t len = password.length();
   if (len < 8)
-    throw std::runtime_error(
-        "Invalid password: must be at least 8 characters");
+    throw std::runtime_error("Invalid password: must be at least 8 characters");
   if (len > 64)
-    throw std::runtime_error(
-        "Invalid password: must be at most 64 characters");
+    throw std::runtime_error("Invalid password: must be at most 64 characters");
 
   for (size_t i = 0; i < len; ++i) {
     if (!std::isgraph(static_cast<unsigned char>(password[i])))
