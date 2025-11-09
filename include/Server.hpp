@@ -18,7 +18,7 @@
 #include <string>
 
 #include "ChannelManager.hpp"
-#include "CommandParser.hpp"
+#include "CommandRouter.hpp"
 #include "ConnectionManager.hpp"
 #include "EventLoop.hpp"
 #include "UserManager.hpp"
@@ -45,7 +45,7 @@ class Server {
   ConnectionManager connManager_;
   UserManager userManager_;
   ChannelManager channelManager_;
-  CommandParser cmdParser_;
+  CommandRouter cmdRouter_;
 
   // Helper methods
   void validateAndSetPort(const std::string& portStr);
