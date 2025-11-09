@@ -15,17 +15,15 @@
 
 #include <sys/epoll.h>
 
-#include <map>
 #include <string>
 
-#include "Client.hpp"
+#include "server/CommandParser.hpp"
+#include "server/ConnectionManager.hpp"
+#include "server/EventLoop.hpp"
 
 #define INVALID_FD -1
 #define MAX_QUEUE 8
-#define MAX_CLIENTS 128
 #define MAX_EVENTS 64
-#define BUFFER_SIZE 4096
-#define MAX_BUFFER_SIZE 8192
 
 class Server {
  public:
@@ -37,20 +35,21 @@ class Server {
   int port_;
   std::string password_;
   int serverSocket_;
-  int epollFd_;
-  struct epoll_event events_[MAX_EVENTS];
-  std::map<int, Client*> clients_;
-  void setPort(const std::string& portStr);
-  void setPassword(const std::string& password);
-  void setServerSocket();
-  void acceptNewConnection();
-  void disconnectClient(int clientFd);
-  void addToEpoll(int fd, uint32_t events) const;
-  void modifyEpollEvents(int fd, uint32_t events) const;
-  void removeFromEpoll(int fd) const;
-  void recvFromClient(Client* client);
-  void sendToClient(Client* client);
-  static void processMessage(Client* client, const std::string& message);
+  EventLoop eventLoop_;
+  ConnectionManager connManager_;
+  CommandParser cmdParser_;
+
+  // Helper methods
+  void validateAndSetPort(const std::string& portStr);
+  void validatePassword(const std::string& password);
+  void setupServerSocket();
+  void handleEvent(const struct epoll_event& event);
+  void acceptConnections();
+  void handleClientError(int fd);
+  void handleClientRead(Client* client);
+  void handleClientWrite(Client* client);
+  void disconnectClient(int fd);
+
   Server();                              // = delete
   Server(const Server& src);             // = delete
   Server& operator=(const Server& src);  // = delete
