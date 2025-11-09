@@ -3,7 +3,7 @@
 
 #include <string>
 
-#include "Client.hpp"
+#include "User.hpp"
 
 // CommandParser: Parses and processes IRC commands
 // Currently a stub implementation that only logs messages
@@ -13,10 +13,10 @@ class CommandParser {
   CommandParser();
   ~CommandParser();
 
-  // Process a message from a client
+  // Process a message from a user
   // Currently: Just logs the message
   // Future: Parse IRC commands and execute them
-  void processMessage(Client* client, const std::string& message);
+  void processMessage(User* user, const std::string& message);
 
  private:
   CommandParser(const CommandParser& src);             // = delete

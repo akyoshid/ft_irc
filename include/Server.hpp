@@ -32,7 +32,7 @@ class Server {
  private:
   // Constants
   static const int kMaxQueue = 8;
-  static const int kMaxClients = 128;
+  static const int kMaxUsers = 128;
   static const int kMaxEvents = 64;
 
   // Member variables
@@ -49,10 +49,10 @@ class Server {
   void setupServerSocket();
   void handleEvent(const struct epoll_event& event);
   void acceptConnections();
-  void handleClientError(int fd);
-  void handleClientRead(Client* client);
-  void handleClientWrite(Client* client);
-  void disconnectClient(int fd);
+  void handleUserError(int fd);
+  void handleUserRead(User* user);
+  void handleUserWrite(User* user);
+  void disconnectUser(int fd);
 
   Server();                              // = delete
   Server(const Server& src);             // = delete
