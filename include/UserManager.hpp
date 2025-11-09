@@ -38,8 +38,15 @@ class UserManager {
   // Check if a nickname is already in use
   bool isNicknameInUse(const std::string& nickname) const;
 
+  // Update user's nickname (maintains nickname index)
+  // oldNick: Empty string if user has no nickname yet
+  // newNick: New nickname to set
+  void updateNickname(User* user, const std::string& oldNick,
+                      const std::string& newNick);
+
  private:
-  std::map<int, User*> users_;  // fd -> User*
+  std::map<int, User*> users_;                // fd -> User*
+  std::map<std::string, User*> usersByNick_;  // nickname -> User*
 
   UserManager(const UserManager& src);             // = delete
   UserManager& operator=(const UserManager& src);  // = delete
