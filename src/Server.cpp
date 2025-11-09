@@ -119,6 +119,16 @@ void Server::acceptConnections() {
     Client* newClient = connManager_.acceptConnection(serverSocket_);
     if (!newClient) break;  // No more connections (EAGAIN)
 
+    // Check client limit to prevent resource exhaustion
+    // Note: acceptConnection() already added the client to the map
+    if (connManager_.getClients().size() > MAX_CLIENTS) {
+      log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
+          "Maximum client limit reached, rejecting connection from " +
+              newClient->getIp());
+      connManager_.disconnect(newClient->getSocketFd());
+      continue;
+    }
+
     eventLoop_.addFd(newClient->getSocketFd(), EPOLLIN);
 
     log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,

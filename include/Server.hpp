@@ -23,6 +23,7 @@
 
 #define INVALID_FD -1
 #define MAX_QUEUE 8
+#define MAX_CLIENTS 128
 #define MAX_EVENTS 64
 
 class Server {

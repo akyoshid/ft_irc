@@ -12,12 +12,18 @@
 
 #include "Client.hpp"
 
+#include <unistd.h>
+
 #include <string>
 
 Client::Client(int socketFd, const std::string& ip)
     : socketFd_(socketFd), ip_(ip), authenticated_(false), registered_(false) {}
 
-Client::~Client() {}
+Client::~Client() {
+  if (socketFd_ != INVALID_FD) {
+    close(socketFd_);
+  }
+}
 
 // Getters
 int Client::getSocketFd() const { return socketFd_; }

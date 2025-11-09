@@ -15,6 +15,8 @@
 
 #include <string>
 
+#define INVALID_FD -1
+
 class Client {
  public:
   Client(int socketFd, const std::string& ip);

@@ -55,9 +55,7 @@ Client* ConnectionManager::acceptConnection(int serverFd) {
     newClient = new Client(clientFd, std::string(clientIp));
     clients_[clientFd] = newClient;
   } catch (...) {
-    if (newClient != NULL) {
-      delete newClient;
-    }
+    delete newClient;  // NULL-safe in C++
     close(clientFd);
     throw;
   }
@@ -74,8 +72,7 @@ void ConnectionManager::disconnect(int clientFd) {
   }
 
   std::string ip = it->second->getIp();
-  close(clientFd);
-  delete it->second;
+  delete it->second;  // Client destructor closes the socket
   clients_.erase(it);
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,
@@ -85,8 +82,7 @@ void ConnectionManager::disconnect(int clientFd) {
 void ConnectionManager::disconnectAll() {
   for (std::map<int, Client*>::iterator it = clients_.begin();
        it != clients_.end(); ++it) {
-    close(it->first);
-    delete it->second;
+    delete it->second;  // Client destructor closes the socket
   }
   clients_.clear();
 }
