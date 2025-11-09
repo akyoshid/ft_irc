@@ -14,9 +14,15 @@ Channel* ChannelManager::createChannel(const std::string& name) {
     return NULL;
   }
 
-  // Create new channel
-  Channel* newChannel = new Channel(name);
-  channels_[name] = newChannel;
+  // Create new channel with exception safety
+  Channel* newChannel = NULL;
+  try {
+    newChannel = new Channel(name);
+    channels_[name] = newChannel;
+  } catch (...) {
+    delete newChannel;  // NULL-safe in C++
+    throw;
+  }
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL, "Channel created: " + name);
   return newChannel;
