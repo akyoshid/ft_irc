@@ -22,9 +22,6 @@
 #include "server/EventLoop.hpp"
 
 #define INVALID_FD -1
-#define MAX_QUEUE 8
-#define MAX_CLIENTS 128
-#define MAX_EVENTS 64
 
 class Server {
  public:
@@ -33,6 +30,12 @@ class Server {
   void run();
 
  private:
+  // Constants
+  static const int kMaxQueue = 8;
+  static const int kMaxClients = 128;
+  static const int kMaxEvents = 64;
+
+  // Member variables
   int port_;
   std::string password_;
   int serverSocket_;

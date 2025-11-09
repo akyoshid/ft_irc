@@ -51,10 +51,10 @@ Server::~Server() {
 // Main event loop
 // ==========================================
 void Server::run() {
-  struct epoll_event events[MAX_EVENTS];
+  struct epoll_event events[kMaxEvents];
 
   while (!g_shutdown) {
-    int nfds = eventLoop_.wait(events, MAX_EVENTS, 30000);
+    int nfds = eventLoop_.wait(events, kMaxEvents, 30000);
     if (nfds < 0) {
       if (errno == EINTR) {
         // Interrupted by signal
@@ -121,7 +121,7 @@ void Server::acceptConnections() {
 
     // Check client limit to prevent resource exhaustion
     // Note: acceptConnection() already added the client to the map
-    if (connManager_.getClients().size() > MAX_CLIENTS) {
+    if (connManager_.getClients().size() > kMaxClients) {
       log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
           "Maximum client limit reached, rejecting connection from " +
               newClient->getIp());
@@ -258,7 +258,7 @@ void Server::setupServerSocket() {
   }
 
   // Listen for connections
-  if (listen(serverSocket_, MAX_QUEUE) < 0) {
+  if (listen(serverSocket_, kMaxQueue) < 0) {
     int errsv = errno;
     throw std::runtime_error(createErrorMessage("listen", errsv));
   }
