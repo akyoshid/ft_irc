@@ -5,5 +5,6 @@ RUN apt-get update && apt-get install -y \
     clang-format \
     clang-tidy \
     irssi \
+    htop \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
