@@ -6,10 +6,10 @@
 #include <string>
 #include <vector>
 
-class message {
+class Message {
  public:
-  message(std::string mes);
-  ~message();
+  Message(std::string mes);
+  ~Message();
 
   void print() const;
 
@@ -22,7 +22,7 @@ class message {
   std::vector<std::string> params;
   std::string trail;
 
-  message();
+  Message();
 
   static void ltrim(std::string& s, const std::string& chars = " ");
   static void rtrim(std::string& s, const std::string& chars = " ");

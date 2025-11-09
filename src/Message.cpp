@@ -2,13 +2,13 @@
 
 const std::string WHITESPACE = " ";
 
-const std::string& message::getCommand() const { return (command); }
+const std::string& Message::getCommand() const { return (command); }
 
-const std::vector<std::string>& message::getParams() const { return (params); }
+const std::vector<std::string>& Message::getParams() const { return (params); }
 
-const std::string& message::getTrail() const { return (trail); }
+const std::string& Message::getTrail() const { return (trail); }
 
-void message::ltrim(std::string& s, const std::string& chars) {
+void Message::ltrim(std::string& s, const std::string& chars) {
   std::string::size_type pos = s.find_first_not_of(chars);
   if (pos == std::string::npos) {
     s.clear();
@@ -17,7 +17,7 @@ void message::ltrim(std::string& s, const std::string& chars) {
   }
 }
 
-void message::rtrim(std::string& s, const std::string& chars) {
+void Message::rtrim(std::string& s, const std::string& chars) {
   std::string::size_type pos = s.find_last_not_of(chars);
   if (pos == std::string::npos) {
     s.clear();
@@ -26,15 +26,15 @@ void message::rtrim(std::string& s, const std::string& chars) {
   }
 }
 
-void message::trim(std::string& s, const std::string& chars) {
+void Message::trim(std::string& s, const std::string& chars) {
   rtrim(s, chars);
   ltrim(s, chars);
 }
 
-message::message(std::string mes) : command(), params(), trail() {
-  std::string::size_type pos = mes.find(':');
+Message::Message(std::string mes) : command(), params(), trail() {
+  std::string::size_type pos = mes.find(" :");
   if (pos != std::string::npos) {
-    trail = mes.substr(pos + 1, std::string::npos);
+    trail = mes.substr(pos + 2, std::string::npos);
     mes.erase(pos);
     trim(trail, WHITESPACE);
   }
@@ -51,9 +51,9 @@ message::message(std::string mes) : command(), params(), trail() {
   }
 }
 
-message::~message() {}
+Message::~Message() {}
 
-void message::print() const {
+void Message::print() const {
   std::cout << "Command: [" << command << "]" << std::endl;
 
   std::cout << "Params:  (" << params.size() << ")" << std::endl;

@@ -13,6 +13,7 @@ SRC = \
 			$(SRC_DIR)/main.cpp \
 			$(SRC_DIR)/Server.cpp \
 			$(SRC_DIR)/utils.cpp \
+			$(SRC_DIR)/Message.cpp \
 			$(SRC_DIR)/server/EventLoop.cpp \
 			$(SRC_DIR)/server/ConnectionManager.cpp \
 			$(SRC_DIR)/server/CommandParser.cpp
