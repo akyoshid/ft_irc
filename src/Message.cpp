@@ -102,16 +102,18 @@ void Message::validateParams(void) const {
 }
 
 Message::Message(const std::string& msg) : prefix_(), command_(), params_() {
+  if (msg.empty()) throw std::runtime_error("message is empty.");
   if (msg.length() > 510) {
     throw std::runtime_error(
         "510 characters maximum allowed for the command and its parameters");
-  } else if (msg[0] == ' ') {
-    throw std::runtime_error(
-        "Invalid message: Message must not be empty or start with space.");
-  }
+    if (msg[0] == ' ') {
+      throw std::runtime_error(
+          "Invalid message: Message must not be empty or start with space.");
+    }
 
-  parseMessage(msg);
-  validate();
+    parseMessage(msg);
+    validate();
+  }
 }
 
 Message::~Message() {}
