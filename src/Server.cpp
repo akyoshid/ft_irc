@@ -128,10 +128,15 @@ void Server::acceptConnections() {
       continue;
     }
 
-    // Add user to manager
-    userManager_.addUser(newUser);
-
-    eventLoop_.addFd(newUser->getSocketFd(), EPOLLIN);
+    // Add user to manager and event loop with exception safety
+    try {
+      userManager_.addUser(newUser);
+      eventLoop_.addFd(newUser->getSocketFd(), EPOLLIN);
+    } catch (...) {
+      // If eventLoop_.addFd() fails, remove user from manager to prevent leak
+      userManager_.removeUser(newUser->getSocketFd());
+      throw;
+    }
 
     log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,
         "New connection: " + newUser->getIp());
