@@ -4,5 +4,6 @@ RUN apt-get update && apt-get install -y \
     valgrind \
     clang-format \
     clang-tidy \
+    irssi \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*

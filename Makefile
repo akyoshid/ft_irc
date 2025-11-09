@@ -12,7 +12,10 @@ SRC = \
 			$(SRC_DIR)/Client.cpp \
 			$(SRC_DIR)/main.cpp \
 			$(SRC_DIR)/Server.cpp \
-			$(SRC_DIR)/utils.cpp
+			$(SRC_DIR)/utils.cpp \
+			$(SRC_DIR)/server/EventLoop.cpp \
+			$(SRC_DIR)/server/ConnectionManager.cpp \
+			$(SRC_DIR)/server/CommandParser.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
@@ -24,7 +27,7 @@ $(NAME): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
-	@mkdir -p $(BUILD_DIR)
+	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(DEP_FLAGS) -I$(INC_DIR) -c $< -o $@
 
 .PHONY: clean
