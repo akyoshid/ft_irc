@@ -1,4 +1,4 @@
-#include "server/CommandParser.hpp"
+#include "CommandParser.hpp"
 
 #include <string>
 
