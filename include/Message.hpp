@@ -9,25 +9,25 @@
 class Message {
  public:
   Message(const std::string& msg);
-  ~Message();
+  ~Message(void);
 
-  void print() const;
+  void print(void) const;
 
-  const std::string& getCommand() const;
-  const std::vector<std::string>& getParams() const;
-  const std::string& getTrail() const;
+  const std::string& getPrefix(void) const;
+  const std::string& getCommand(void) const;
+  const std::vector<std::string>& getParams(void) const;
 
  private:
   std::string prefix_;
   std::string command_;
   std::vector<std::string> params_;
 
-  Message();
+  Message(void);
   Message(const Message& msg);             // = delete
   Message& operator=(const Message& msg);  // = delete
 
   void parseMessage(const std::string& msg);
-  void validate() const;
+  void validate(void) const;
   void validatePrefix(void) const;
   void validateCommand(void) const;
   void validateParams(void) const;

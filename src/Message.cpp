@@ -1,8 +1,12 @@
 #include "Message.hpp"
 
-const std::string& Message::getCommand() const { return (command_); }
+const std::string& Message::getPrefix(void) const { return (prefix_); }
 
-const std::vector<std::string>& Message::getParams() const { return (params_); }
+const std::string& Message::getCommand(void) const { return (command_); }
+
+const std::vector<std::string>& Message::getParams(void) const {
+  return (params_);
+}
 
 void Message::parseMessage(const std::string& msg) {
   std::string mutable_msg = msg;
@@ -106,19 +110,19 @@ Message::Message(const std::string& msg) : prefix_(), command_(), params_() {
   if (msg.length() > 510) {
     throw std::runtime_error(
         "510 characters maximum allowed for the command and its parameters");
-    if (msg[0] == ' ') {
-      throw std::runtime_error(
-          "Invalid message: Message must not be empty or start with space.");
-    }
-
-    parseMessage(msg);
-    validate();
   }
+  if (msg[0] == ' ') {
+    throw std::runtime_error(
+        "Invalid message: Message must not be empty or start with space.");
+  }
+
+  parseMessage(msg);
+  validate();
 }
 
-Message::~Message() {}
+Message::~Message(void) {}
 
-void Message::print() const {
+void Message::print(void) const {
   std::cout << "Prefix: [" << prefix_ << "]" << std::endl;
 
   std::cout << "Command: [" << command_ << "]" << std::endl;
