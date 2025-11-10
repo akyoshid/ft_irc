@@ -2,8 +2,18 @@
 #define SRC_SERVER_COMMANDPARSER_HPP_
 
 #include <string>
+#include <vector>
 
 #include "User.hpp"
+
+// Command: Represents a parsed IRC command
+struct Command {
+  std::string prefix;   // Optional prefix (usually empty from clients)
+  std::string command;  // Command name (PASS, NICK, JOIN, etc.)
+  std::vector<std::string> params;  // Command parameters
+
+  Command() : prefix(""), command("") {}
+};
 
 // CommandParser: Parses and processes IRC commands
 // Currently a stub implementation that only logs messages
