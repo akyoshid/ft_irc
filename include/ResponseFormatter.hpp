@@ -72,6 +72,9 @@ class ResponseFormatter {
   static std::string errBadChannelKey(const std::string& channel);
   static std::string errChanOPrivsNeeded(const std::string& channel);
   static std::string errUnknownMode(char mode);
+  static std::string errInvalidModeParam(const std::string& channel, char mode,
+                                         const std::string& param,
+                                         const std::string& description);
 
  private:
   // Helper: Format IRC message with prefix, command, and parameters
