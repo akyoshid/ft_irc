@@ -2,24 +2,15 @@
 #define INCLUDE_COMMANDROUTER_HPP_
 
 #include <string>
-#include <vector>
 
 #include "ChannelManager.hpp"
+#include "CommandParser.hpp"
 #include "ResponseFormatter.hpp"
 #include "User.hpp"
 #include "UserManager.hpp"
 
-// Command: Represents a parsed IRC command
-struct Command {
-  std::string prefix;   // Optional prefix (usually empty from clients)
-  std::string command;  // Command name (PASS, NICK, JOIN, etc.)
-  std::vector<std::string> params;  // Command parameters
-
-  Command() : prefix(""), command("") {}
-};
-
-// CommandRouter: Parses and routes IRC commands to appropriate handlers
-// Implements IRC message parsing per RFC1459 and dispatches to command handlers
+// CommandRouter: Routes IRC commands to appropriate handlers
+// Dispatches parsed commands to command handlers
 class CommandRouter {
  public:
   CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
