@@ -85,6 +85,8 @@ void CommandRouter::dispatch(User* user, const Command& cmd) {
 // ==========================================
 
 void CommandRouter::handlePass(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PASS command from " + user->getIp());
   // Check if user is already registered
   if (user->isRegistered()) {
     sendResponse(user, ResponseFormatter::errAlreadyRegistered());
@@ -118,6 +120,8 @@ void CommandRouter::handlePass(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleNick(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "NICK command from " + user->getIp());
   // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("NICK"));
@@ -157,6 +161,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleUser(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "USER command from " + user->getIp());
   // Check if user is already registered
   if (user->isRegistered()) {
     sendResponse(user, ResponseFormatter::errAlreadyRegistered());
@@ -186,6 +192,8 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleJoin(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "JOIN command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -258,6 +266,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
   }
 
   // Broadcast JOIN to all channel members (including the user)
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_CHANNEL,
+      "Broadcasting JOIN to " + channelName);
   std::string joinMsg = ResponseFormatter::rplJoin(user, channelName);
   const std::set<int>& members = channel->getMembers();
   for (std::set<int>::const_iterator it = members.begin(); it != members.end();
@@ -273,6 +283,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePart(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PART command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -301,6 +313,8 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
   }
 
   // Broadcast PART to all channel members (including the user)
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_CHANNEL,
+      "Broadcasting PART from " + channelName);
   std::string partMsg = ResponseFormatter::rplPart(user, channelName, reason);
   const std::set<int>& members = channel->getMembers();
   for (std::set<int>::const_iterator it = members.begin(); it != members.end();
@@ -328,6 +342,8 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PRIVMSG command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -362,6 +378,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     // check above
 
     // Broadcast message to all channel members except sender
+    log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+        "Broadcasting PRIVMSG to " + target);
     std::string privmsgMsg =
         ResponseFormatter::rplPrivmsg(user, target, message);
     const std::set<int>& members = channel->getMembers();
@@ -395,6 +413,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleKick(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "KICK command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -447,6 +467,7 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
   }
 
   // Broadcast KICK message to all channel members
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND, "Broadcasting KICK to " + channel);
   std::string kickMsg =
       ResponseFormatter::rplKick(user, channel, targetNick, reason);
   const std::set<int>& members = chan->getMembers();
@@ -472,6 +493,8 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleInvite(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "INVITE command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -534,6 +557,8 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleTopic(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "TOPIC command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -582,6 +607,8 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   chan->setTopic(newTopic);
 
   // Broadcast topic change to all channel members
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "Broadcasting TOPIC to " + channel);
   std::string topicMsg =
       ResponseFormatter::rplTopicChange(user, channel, newTopic);
   const std::set<int>& members = chan->getMembers();
@@ -599,6 +626,8 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleMode(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "MODE command from " + user->getNickname());
   // Check if user is registered
   if (!user->isRegistered()) {
     return;  // Silently ignore commands from unregistered users
@@ -690,6 +719,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleQuit(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "QUIT command from " + user->getNickname());
   std::string reason = cmd.params.empty() ? "Client quit" : cmd.params[0];
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
@@ -697,6 +728,8 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
           ")");
 
   // Broadcast QUIT to all channels the user is in
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "Broadcasting QUIT from " + user->getNickname());
   // Create copy to avoid iterator invalidation when removing user from channels
   std::set<std::string> channelsCopy = user->getJoinedChannels();
   for (std::set<std::string>::const_iterator it = channelsCopy.begin();
@@ -735,6 +768,8 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handleCap(User* user, const Command& cmd) {
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "CAP command from " + user->getIp());
   // CAP command is sent by modern IRC clients for capability negotiation
   // We don't support any capabilities, so just silently ignore it
   // This prevents "Unknown command" errors for clients using CAP
