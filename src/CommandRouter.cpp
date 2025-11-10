@@ -431,7 +431,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     }
 
     // Broadcast message to all channel members except sender
-    std::string privmsgMsg = ResponseFormatter::rplPrivmsg(user, target, message);
+    std::string privmsgMsg =
+        ResponseFormatter::rplPrivmsg(user, target, message);
     const std::set<int>& members = channel->getMembers();
     for (std::set<int>::const_iterator it = members.begin();
          it != members.end(); ++it) {
@@ -453,7 +454,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
       return;
     }
 
-    std::string privmsgMsg = ResponseFormatter::rplPrivmsg(user, target, message);
+    std::string privmsgMsg =
+        ResponseFormatter::rplPrivmsg(user, target, message);
     sendResponse(targetUser, privmsgMsg);
 
     log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
@@ -517,9 +519,15 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
     // Send QUIT message to all channel members except the quitting user
     // Format: :nick!user@host QUIT :reason
-    std::string prefix = user->getNickname() + "!" + user->getUsername() +
-                         "@" + user->getIp();
-    std::string quitMsg = ":" + prefix + " QUIT :" + reason + "\r\n";
+    std::string quitMsg = ":";
+    quitMsg += user->getNickname();
+    quitMsg += "!";
+    quitMsg += user->getUsername();
+    quitMsg += "@";
+    quitMsg += user->getIp();
+    quitMsg += " QUIT :";
+    quitMsg += reason;
+    quitMsg += "\r\n";
     const std::set<int>& members = channel->getMembers();
     for (std::set<int>::const_iterator mit = members.begin();
          mit != members.end(); ++mit) {
