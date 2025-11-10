@@ -917,7 +917,8 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
     // Prevent last operator from removing their own operator status
     if (targetUser->getSocketFd() == sender->getSocketFd() &&
         chan->getOperators().size() == 1) {
-      sendResponse(sender, ResponseFormatter::errChanOPrivsNeeded(chan->getName()));
+      sendResponse(sender,
+                   ResponseFormatter::errChanOPrivsNeeded(chan->getName()));
       ++argIndex;
       return;
     }
