@@ -45,12 +45,18 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 // ==========================================
 
 void CommandRouter::dispatch(User* user, const Command& cmd) {
-  if (cmd.command == "PASS") {
+  if (cmd.command == "CAP") {
+    handleCap(user, cmd);
+  } else if (cmd.command == "PASS") {
     handlePass(user, cmd);
   } else if (cmd.command == "NICK") {
     handleNick(user, cmd);
   } else if (cmd.command == "USER") {
     handleUser(user, cmd);
+  } else if (cmd.command == "PING") {
+    handlePing(user, cmd);
+  } else if (cmd.command == "PONG") {
+    handlePong(user, cmd);
   } else if (cmd.command == "JOIN") {
     handleJoin(user, cmd);
   } else if (cmd.command == "PART") {
@@ -725,6 +731,65 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
   // Note: Actual disconnection is handled by Server layer
   // This just broadcasts the QUIT message to relevant users
+}
+
+void CommandRouter::handleCap(User* user, const Command& cmd) {
+  // CAP command is sent by modern IRC clients for capability negotiation
+  // We don't support any capabilities, so we just acknowledge and ignore it
+  // This prevents "Unknown command" errors for clients using CAP
+
+  if (cmd.params.empty()) {
+    return;  // Silently ignore malformed CAP commands
+  }
+
+  const std::string& subcommand = cmd.params[0];
+
+  if (subcommand == "LS") {
+    // CAP LS: Client asks for list of capabilities
+    // Reply with empty list (we don't support any capabilities)
+    sendResponse(user, ":ft_irc CAP * LS :\r\n");
+  } else if (subcommand == "REQ") {
+    // CAP REQ: Client requests specific capabilities
+    // Reply NAK (we don't support any capabilities)
+    if (cmd.params.size() >= 2) {
+      std::string caps = cmd.params[1];
+      sendResponse(user, ":ft_irc CAP * NAK :" + caps + "\r\n");
+    }
+  } else if (subcommand == "END") {
+    // CAP END: Client finishes capability negotiation
+    // Just acknowledge, no action needed
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        "CAP END received from: " + user->getIp());
+  }
+  // Silently ignore other CAP subcommands (LIST, etc.)
+}
+
+void CommandRouter::handlePing(User* user, const Command& cmd) {
+  // PING: Keep-alive mechanism
+  // Reply with PONG using the same token
+
+  if (cmd.params.empty()) {
+    // No token provided, use server name
+    sendResponse(user, ":ft_irc PONG ft_irc\r\n");
+    return;
+  }
+
+  std::string token = cmd.params[0];
+  sendResponse(user, ":ft_irc PONG ft_irc :" + token + "\r\n");
+
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PING received from: " + user->getNickname() + " (token: " + token + ")");
+}
+
+void CommandRouter::handlePong(User* user, const Command& cmd) {
+  // PONG: Response to server's PING
+  // Currently we don't send PING to clients, but acknowledge PONG if received
+
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PONG received from: " + user->getNickname());
+
+  (void)cmd;  // Suppress unused parameter warning
+  // No response needed for PONG
 }
 
 // ==========================================

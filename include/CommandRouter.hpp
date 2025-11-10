@@ -51,6 +51,9 @@ class CommandRouter {
   void handleTopic(User* user, const Command& cmd);
   void handleMode(User* user, const Command& cmd);
   void handleQuit(User* user, const Command& cmd);
+  void handleCap(User* user, const Command& cmd);
+  void handlePing(User* user, const Command& cmd);
+  void handlePong(User* user, const Command& cmd);
 
   // ==========================================
   // Helpers
