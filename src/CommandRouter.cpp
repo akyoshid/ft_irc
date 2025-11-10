@@ -433,7 +433,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     }
 
     // TODO(Phase 5): Check moderated mode (+m) - only ops/voiced users can send
-    // TODO(Phase 5): Check no-external messages (+n) - handled by membership check above
+    // TODO(Phase 5): Check no-external messages (+n) - handled by membership
+    // check above
 
     // Broadcast message to all channel members except sender
     std::string privmsgMsg =
