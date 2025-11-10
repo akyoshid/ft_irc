@@ -757,16 +757,16 @@ void CommandRouter::handlePing(User* user, const Command& cmd) {
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
       "PING from " + user->getIp() + " - " + debugMsg);
 
-  // RFC 1459: PONG format is ":server PONG server :token"
-  // But many clients expect: "PONG :token" or ":server PONG :token"
+  // RFC 1459: When receiving "PING <token>", reply with "PONG <token>"
+  // The token should be echoed back without the ':' prefix
   std::string response;
   if (cmd.params.empty()) {
     // No token provided, use server name
-    response = "PONG :ft_irc\r\n";
+    response = "PONG ft_irc\r\n";
   } else {
-    // Use the token from PING
+    // Echo back the exact token from PING
     std::string token = cmd.params[0];
-    response = "PONG :" + token + "\r\n";
+    response = "PONG " + token + "\r\n";
   }
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
