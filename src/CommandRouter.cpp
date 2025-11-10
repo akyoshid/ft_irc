@@ -46,20 +46,19 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 Command CommandRouter::parseCommand(const std::string& message) {
   Command cmd;
-  const std::string& msg = message;
   size_t pos = 0;
 
   // Skip leading spaces
-  while (pos < msg.length() && msg[pos] == ' ') {
+  while (pos < message.length() && message[pos] == ' ') {
     ++pos;
   }
 
   // Parse optional prefix (messages from clients usually don't have prefix)
-  if (pos < msg.length() && msg[pos] == ':') {
+  if (pos < message.length() && message[pos] == ':') {
     ++pos;
-    size_t spacePos = msg.find(' ', pos);
+    size_t spacePos = message.find(' ', pos);
     if (spacePos != std::string::npos) {
-      cmd.prefix = msg.substr(pos, spacePos - pos);
+      cmd.prefix = message.substr(pos, spacePos - pos);
       pos = spacePos + 1;
     } else {
       // Malformed: prefix but no command
@@ -68,13 +67,13 @@ Command CommandRouter::parseCommand(const std::string& message) {
   }
 
   // Skip spaces before command
-  while (pos < msg.length() && msg[pos] == ' ') {
+  while (pos < message.length() && message[pos] == ' ') {
     ++pos;
   }
 
   // Parse command
   size_t cmdEnd = pos;
-  while (cmdEnd < msg.length() && msg[cmdEnd] != ' ') {
+  while (cmdEnd < message.length() && message[cmdEnd] != ' ') {
     ++cmdEnd;
   }
 
@@ -83,7 +82,7 @@ Command CommandRouter::parseCommand(const std::string& message) {
     return cmd;
   }
 
-  cmd.command = msg.substr(pos, cmdEnd - pos);
+  cmd.command = message.substr(pos, cmdEnd - pos);
   // Convert command to uppercase for case-insensitive matching
   for (size_t i = 0; i < cmd.command.length(); ++i) {
     cmd.command[i] = std::toupper(cmd.command[i]);
@@ -92,30 +91,30 @@ Command CommandRouter::parseCommand(const std::string& message) {
   pos = cmdEnd;
 
   // Parse parameters
-  while (pos < msg.length()) {
+  while (pos < message.length()) {
     // Skip spaces
-    while (pos < msg.length() && msg[pos] == ' ') {
+    while (pos < message.length() && message[pos] == ' ') {
       ++pos;
     }
 
-    if (pos >= msg.length()) {
+    if (pos >= message.length()) {
       break;
     }
 
     // Trailing parameter (starts with ':')
-    if (msg[pos] == ':') {
+    if (message[pos] == ':') {
       ++pos;
-      cmd.params.push_back(msg.substr(pos));
+      cmd.params.push_back(message.substr(pos));
       break;
     }
 
     // Regular parameter
     size_t paramEnd = pos;
-    while (paramEnd < msg.length() && msg[paramEnd] != ' ') {
+    while (paramEnd < message.length() && message[paramEnd] != ' ') {
       ++paramEnd;
     }
 
-    cmd.params.push_back(msg.substr(pos, paramEnd - pos));
+    cmd.params.push_back(message.substr(pos, paramEnd - pos));
     pos = paramEnd;
   }
 
@@ -174,6 +173,12 @@ void CommandRouter::handlePass(User* user, const Command& cmd) {
   }
 
   // Verify password
+  // SECURITY NOTES:
+  // 1. String comparison is not constant-time (timing attack vulnerability)
+  // 2. No rate limiting on failed attempts (brute force vulnerability)
+  // 3. No input sanitization (accepts control characters)
+  // These are acceptable for educational purposes but should be addressed
+  // in production systems
   if (cmd.params[0] != password_) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Authentication failed for " + user->getIp() + ": incorrect password");
@@ -203,6 +208,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
   }
 
   // Check if nickname is already in use by another user
+  // NOTE: This check-then-set pattern is safe in single-threaded context
+  // Multi-threaded implementation would require atomic check-and-set
   if (userManager_->isNicknameInUse(newNick)) {
     sendResponse(user, ResponseFormatter::errNicknameInUse(newNick));
     return;
@@ -218,18 +225,7 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
   // Check if registration is complete (authenticated + nickname + user info)
   if (!user->isRegistered() && user->isAuthenticated() &&
       !user->getUsername().empty()) {
-    // Complete registration
-    user->setRegistered(true);
-
-    // Send welcome messages (001-004)
-    sendResponse(user, ResponseFormatter::rplWelcome(user));
-    sendResponse(user, ResponseFormatter::rplYourHost(user));
-    sendResponse(user, ResponseFormatter::rplCreated(user));
-    sendResponse(user, ResponseFormatter::rplMyInfo(user));
-
-    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-        "Registration complete: " + user->getNickname() + "!" +
-            user->getUsername() + "@" + user->getIp());
+    completeRegistration(user);
   }
 }
 
@@ -258,18 +254,7 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
 
   // Check if registration is complete (authenticated + nickname + user info)
   if (user->isAuthenticated() && !user->getNickname().empty()) {
-    // Complete registration
-    user->setRegistered(true);
-
-    // Send welcome messages (001-004)
-    sendResponse(user, ResponseFormatter::rplWelcome(user));
-    sendResponse(user, ResponseFormatter::rplYourHost(user));
-    sendResponse(user, ResponseFormatter::rplCreated(user));
-    sendResponse(user, ResponseFormatter::rplMyInfo(user));
-
-    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-        "Registration complete: " + user->getNickname() + "!" +
-            user->getUsername() + "@" + user->getIp());
+    completeRegistration(user);
   }
 }
 
@@ -362,6 +347,20 @@ void CommandRouter::sendResponse(User* user, const std::string& response) {
   user->getWriteBuffer() += response;
 }
 
+void CommandRouter::completeRegistration(User* user) {
+  user->setRegistered(true);
+
+  // Send welcome messages (001-004)
+  sendResponse(user, ResponseFormatter::rplWelcome(user));
+  sendResponse(user, ResponseFormatter::rplYourHost(user));
+  sendResponse(user, ResponseFormatter::rplCreated(user));
+  sendResponse(user, ResponseFormatter::rplMyInfo(user));
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      "Registration complete: " + user->getNickname() + "!" +
+          user->getUsername() + "@" + user->getIp());
+}
+
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 bool CommandRouter::isValidChannelName(const std::string& name) {
   if (name.empty() || name.length() > 200) {
@@ -386,6 +385,13 @@ bool CommandRouter::isValidChannelName(const std::string& name) {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 bool CommandRouter::isValidNickname(const std::string& nickname) {
+  // RFC1459 strict compliance for nickname validation
+  // LIMITATIONS:
+  // 1. Does not allow underscore '_' (commonly allowed in modern servers)
+  // 2. 9-character limit (modern servers often support longer nicknames)
+  // 3. No reserved nickname checking (e.g., "anonymous", server names)
+  // These limitations are acceptable for educational/RFC1459 strict compliance
+
   if (nickname.empty() || nickname.length() > 9) {
     return false;
   }
