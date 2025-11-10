@@ -1,5 +1,5 @@
-#ifndef SRC_SERVER_COMMANDPARSER_HPP_
-#define SRC_SERVER_COMMANDPARSER_HPP_
+#ifndef INCLUDE_COMMANDPARSER_HPP_
+#define INCLUDE_COMMANDPARSER_HPP_
 
 #include <string>
 #include <vector>

@@ -1,5 +1,5 @@
-#ifndef SRC_SERVER_EVENTLOOP_HPP_
-#define SRC_SERVER_EVENTLOOP_HPP_
+#ifndef INCLUDE_EVENTLOOP_HPP_
+#define INCLUDE_EVENTLOOP_HPP_
 
 #include <sys/epoll.h>
 
