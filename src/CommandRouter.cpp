@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <climits>
+#include <cstddef>
 
 #include "utils.hpp"
 
@@ -715,6 +717,12 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // Parse mode string
   const std::string& modeString = cmd.params[1];
+
+  // Validate mode string is not empty
+  if (modeString.empty()) {
+    return;
+  }
+
   bool adding = true;
   size_t argIndex = 2;
   std::string appliedModes;
@@ -741,7 +749,7 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
       applyModeKey(chan, adding, argIndex, cmd.params, appliedModes,
                    appliedArgs);
     } else if (mode == 'o') {
-      applyModeOperator(chan, adding, argIndex, cmd.params, appliedModes,
+      applyModeOperator(user, chan, adding, argIndex, cmd.params, appliedModes,
                         appliedArgs);
     } else if (mode == 'l') {
       applyModeUserLimit(chan, adding, argIndex, cmd.params, appliedModes,
@@ -844,7 +852,7 @@ void CommandRouter::applyModeKey(Channel* chan, bool adding, size_t& argIndex,
   }
 }
 
-void CommandRouter::applyModeOperator(Channel* chan, bool adding,
+void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
                                       size_t& argIndex,
                                       const std::vector<std::string>& params,
                                       std::string& appliedModes,
@@ -853,16 +861,28 @@ void CommandRouter::applyModeOperator(Channel* chan, bool adding,
 
   const std::string& targetNick = params[argIndex];
   User* targetUser = userManager_->getUserByNickname(targetNick);
-  if (targetUser && chan->isMember(targetUser->getSocketFd())) {
-    if (adding) {
-      chan->addOperator(targetUser->getSocketFd());
-    } else {
-      chan->removeOperator(targetUser->getSocketFd());
-    }
-    appliedModes += adding ? "+o" : "-o";
-    appliedArgs += appliedArgs.empty() ? "" : " ";
-    appliedArgs += targetNick;
+
+  if (!targetUser) {
+    sendResponse(sender, ResponseFormatter::errNoSuchNick(targetNick));
+    ++argIndex;
+    return;
   }
+
+  if (!chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(sender,
+                 ResponseFormatter::errUserNotInChannel(targetNick, chan->getName()));
+    ++argIndex;
+    return;
+  }
+
+  if (adding) {
+    chan->addOperator(targetUser->getSocketFd());
+  } else {
+    chan->removeOperator(targetUser->getSocketFd());
+  }
+  appliedModes += adding ? "+o" : "-o";
+  appliedArgs += appliedArgs.empty() ? "" : " ";
+  appliedArgs += targetNick;
   ++argIndex;
 }
 
@@ -873,18 +893,40 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
                                        std::string& appliedArgs) {
   if (adding) {
     if (argIndex < params.size()) {
-      // Simple string to int conversion for C++98
-      size_t limit = 0;
-      for (size_t j = 0; j < params[argIndex].length(); ++j) {
-        if (params[argIndex][j] >= '0' && params[argIndex][j] <= '9') {
-          limit = (limit * 10) + (params[argIndex][j] - '0');
+      const std::string& limitStr = params[argIndex];
+
+      // Validate: non-empty and all digits
+      if (limitStr.empty() || limitStr.length() > 10) {
+        ++argIndex;
+        return;
+      }
+
+      // Check all characters are digits
+      for (size_t j = 0; j < limitStr.length(); ++j) {
+        if (limitStr[j] < '0' || limitStr[j] > '9') {
+          ++argIndex;
+          return;
         }
       }
+
+      // Parse with overflow protection
+      size_t limit = 0;
+      const size_t maxLimit = static_cast<size_t>(-1);  // SIZE_MAX equivalent for C++98
+      for (size_t j = 0; j < limitStr.length(); ++j) {
+        size_t digit = limitStr[j] - '0';
+        // Check for overflow before multiplication
+        if (limit > (maxLimit - digit) / 10) {
+          ++argIndex;
+          return;
+        }
+        limit = (limit * 10) + digit;
+      }
+
       if (limit > 0) {
         chan->setUserLimit(limit);
         appliedModes += "+l";
         appliedArgs += appliedArgs.empty() ? "" : " ";
-        appliedArgs += params[argIndex];
+        appliedArgs += limitStr;
       }
       ++argIndex;
     }
