@@ -746,17 +746,33 @@ void CommandRouter::handlePing(User* user, const Command& cmd) {
   // PING: Keep-alive mechanism
   // Reply with PONG using the same token
 
+  // Debug: Log the full PING command received
+  std::string debugMsg =
+      "PING command - prefix: [" + cmd.prefix + "], params: [";
+  for (size_t i = 0; i < cmd.params.size(); ++i) {
+    if (i > 0) debugMsg += ", ";
+    debugMsg += cmd.params[i];
+  }
+  debugMsg += "]";
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      "PING from " + user->getIp() + " - " + debugMsg);
+
+  // RFC 1459: PONG format is ":server PONG server :token"
+  // But many clients expect: "PONG :token" or ":server PONG :token"
+  std::string response;
   if (cmd.params.empty()) {
     // No token provided, use server name
-    sendResponse(user, ":ft_irc PONG ft_irc\r\n");
-    return;
+    response = "PONG :ft_irc\r\n";
+  } else {
+    // Use the token from PING
+    std::string token = cmd.params[0];
+    response = "PONG :" + token + "\r\n";
   }
 
-  std::string token = cmd.params[0];
-  sendResponse(user, ":ft_irc PONG ft_irc :" + token + "\r\n");
-
-  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
-      "PING received from: " + user->getNickname() + " (token: " + token + ")");
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      "PONG response to " + user->getIp() + ": [" +
+          response.substr(0, response.length() - 2) + "]");
+  sendResponse(user, response);
 }
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
