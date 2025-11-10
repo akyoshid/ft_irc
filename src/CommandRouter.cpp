@@ -162,7 +162,7 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleUser(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -198,7 +198,7 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleJoin(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -294,7 +294,7 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePart(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -358,7 +358,7 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -435,7 +435,7 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleKick(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -520,7 +520,7 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleInvite(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -590,7 +590,7 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleTopic(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -665,7 +665,7 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleMode(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -763,7 +763,7 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleQuit(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
@@ -817,7 +817,7 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handleCap(User* user, const Command& cmd) {
-  std::string params = "";
+  std::string params;
   for (size_t i = 0; i < cmd.params.size(); ++i) {
     if (i > 0) params += ", ";
     params += cmd.params[i];
