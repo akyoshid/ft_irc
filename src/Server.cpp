@@ -43,7 +43,7 @@ Server::Server(const std::string& portStr, const std::string& password)
 }
 
 Server::~Server() {
-  connManager_.disconnectAll();
+  // UserManager destructor will clean up all users automatically
   if (serverSocket_ != INVALID_FD) close(serverSocket_);
 }
 
@@ -86,29 +86,29 @@ void Server::handleEvent(const struct epoll_event& event) {
     return;
   }
 
-  // Client socket: error handling
+  // User socket: error handling
   if (events & (EPOLLERR | EPOLLHUP)) {
-    handleClientError(fd);
+    handleUserError(fd);
     return;
   }
 
-  // Client socket: data I/O
-  Client* client = connManager_.getClient(fd);
-  if (!client) {
+  // User socket: data I/O
+  User* user = userManager_.getUserByFd(fd);
+  if (!user) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
-        "Event for non-existent client");
+        "Event for non-existent user");
     return;
   }
 
   if (events & EPOLLIN) {
-    handleClientRead(client);
+    handleUserRead(user);
   }
 
-  // Re-check if client still exists after read (might have disconnected)
+  // Re-check if user still exists after read (might have disconnected)
   if (events & EPOLLOUT) {
-    client = connManager_.getClient(fd);
-    if (client) {
-      handleClientWrite(client);
+    user = userManager_.getUserByFd(fd);
+    if (user) {
+      handleUserWrite(user);
     }
   }
 }
@@ -116,74 +116,81 @@ void Server::handleEvent(const struct epoll_event& event) {
 void Server::acceptConnections() {
   // Edge-triggered: accept all pending connections
   while (true) {
-    Client* newClient = connManager_.acceptConnection(serverSocket_);
-    if (!newClient) break;  // No more connections (EAGAIN)
+    User* newUser = connManager_.acceptConnection(serverSocket_);
+    if (!newUser) break;  // No more connections (EAGAIN)
 
-    // Check client limit to prevent resource exhaustion
-    // Note: acceptConnection() already added the client to the map
-    if (connManager_.getClients().size() > kMaxClients) {
+    // Check user limit to prevent resource exhaustion
+    if (userManager_.getUsers().size() >= kMaxUsers) {
       log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
-          "Maximum client limit reached, rejecting connection from " +
-              newClient->getIp());
-      connManager_.disconnect(newClient->getSocketFd());
+          "Maximum user limit reached, rejecting connection from " +
+              newUser->getIp());
+      delete newUser;  // User destructor closes the socket
       continue;
     }
 
-    eventLoop_.addFd(newClient->getSocketFd(), EPOLLIN);
+    // Add user to manager and event loop with exception safety
+    try {
+      userManager_.addUser(newUser);
+      eventLoop_.addFd(newUser->getSocketFd(), EPOLLIN);
+    } catch (...) {
+      // If eventLoop_.addFd() fails, remove user from manager to prevent leak
+      userManager_.removeUser(newUser->getSocketFd());
+      throw;
+    }
 
     log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,
-        "New connection: " + newClient->getIp());
+        "New connection: " + newUser->getIp());
 
     // Send initial message
-    newClient->getWriteBuffer() +=
+    newUser->getWriteBuffer() +=
         ":ft_irc NOTICE * :Please authenticate with PASS command\r\n";
-    eventLoop_.modifyFd(newClient->getSocketFd(), EPOLLIN | EPOLLOUT);
+    eventLoop_.modifyFd(newUser->getSocketFd(), EPOLLIN | EPOLLOUT);
   }
 }
 
-void Server::handleClientError(int fd) {
-  Client* client = connManager_.getClient(fd);
-  if (client) {
+void Server::handleUserError(int fd) {
+  User* user = userManager_.getUserByFd(fd);
+  if (user) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
-        "Connection closed unexpectedly: " + client->getIp());
-    disconnectClient(fd);
+        "Connection closed unexpectedly: " + user->getIp());
+    disconnectUser(fd);
   }
 }
 
-void Server::handleClientRead(Client* client) {
+void Server::handleUserRead(User* user) {
   std::vector<std::string> messages;
 
   // Receive data
-  ReceiveResult result = connManager_.receiveData(client, messages);
+  ReceiveResult result = connManager_.receiveData(user, messages);
 
   if (result == RECV_CLOSED || result == RECV_ERROR) {
-    disconnectClient(client->getSocketFd());
+    disconnectUser(user->getSocketFd());
     return;
   }
 
   // Process received messages
   for (size_t i = 0; i < messages.size(); ++i) {
-    cmdParser_.processMessage(client, messages[i]);
+    cmdParser_.processMessage(user, messages[i]);
   }
 }
 
-void Server::handleClientWrite(Client* client) {
-  SendResult result = connManager_.sendData(client);
+void Server::handleUserWrite(User* user) {
+  SendResult result = connManager_.sendData(user);
 
   if (result == SEND_ERROR) {
-    disconnectClient(client->getSocketFd());
+    disconnectUser(user->getSocketFd());
     return;
   }
 
   // All data sent: remove EPOLLOUT
   if (result == SEND_COMPLETE) {
-    eventLoop_.modifyFd(client->getSocketFd(), EPOLLIN);
+    eventLoop_.modifyFd(user->getSocketFd(), EPOLLIN);
   }
 }
 
-void Server::disconnectClient(int fd) {
+void Server::disconnectUser(int fd) {
   eventLoop_.removeFd(fd);
-  connManager_.disconnect(fd);
+  userManager_.removeUser(fd);
 }
 
 // ==========================================

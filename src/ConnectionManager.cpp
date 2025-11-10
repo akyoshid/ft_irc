@@ -12,23 +12,23 @@
 #include <stdexcept>
 #include <string>
 
-#include "Client.hpp"
+#include "User.hpp"
 #include "utils.hpp"
 
 ConnectionManager::ConnectionManager() {}
 
-ConnectionManager::~ConnectionManager() { disconnectAll(); }
+ConnectionManager::~ConnectionManager() {}
 
-Client* ConnectionManager::acceptConnection(int serverFd) {
-  struct sockaddr_in clientAddr;
-  socklen_t clientAddrLen = sizeof(clientAddr);
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+User* ConnectionManager::acceptConnection(int serverFd) {
+  struct sockaddr_in userAddr;
+  socklen_t userAddrLen = sizeof(userAddr);
 
   // Accept new connection
-  // This creates a new socket file descriptor for the client
-  int clientFd =
-      accept(serverFd, reinterpret_cast<struct sockaddr*>(&clientAddr),
-             &clientAddrLen);
-  if (clientFd < 0) {
+  // This creates a new socket file descriptor for the user
+  int userFd = accept(serverFd, reinterpret_cast<struct sockaddr*>(&userAddr),
+                      &userAddrLen);
+  if (userFd < 0) {
     // No more connections waiting (normal for edge-triggered mode)
     if (errno == EAGAIN || errno == EWOULDBLOCK) return NULL;
     // Unexpected error
@@ -36,78 +36,53 @@ Client* ConnectionManager::acceptConnection(int serverFd) {
                                        createErrorMessage("accept", errno)));
   }
 
-  // Set the new client socket to non-blocking mode
-  if (fcntl(clientFd, F_SETFL, O_NONBLOCK) < 0) {
+  // Set the new user socket to non-blocking mode
+  if (fcntl(userFd, F_SETFL, O_NONBLOCK) < 0) {
     int errsv = errno;
-    close(clientFd);
+    close(userFd);
     throw std::runtime_error(createLog(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
                                        createErrorMessage("fcntl", errsv)));
   }
 
-  // Get client IP address
-  char clientIp[INET_ADDRSTRLEN];
-  inet_ntop(AF_INET, &clientAddr.sin_addr, clientIp, INET_ADDRSTRLEN);
+  // Get user IP address
+  char userIp[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &userAddr.sin_addr, userIp, INET_ADDRSTRLEN);
 
-  // Create and store new client
+  // Create new user
   // Use try-catch for exception safety (issue #24)
-  Client* newClient = NULL;
+  User* newUser = NULL;
   try {
-    newClient = new Client(clientFd, std::string(clientIp));
-    clients_[clientFd] = newClient;
+    newUser = new User(userFd, std::string(userIp));
   } catch (...) {
-    delete newClient;  // NULL-safe in C++
-    close(clientFd);
+    delete newUser;  // NULL-safe in C++
+    close(userFd);
     throw;
   }
 
-  return newClient;
-}
-
-void ConnectionManager::disconnect(int clientFd) {
-  std::map<int, Client*>::iterator it = clients_.find(clientFd);
-  if (it == clients_.end()) {
-    log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
-        "Attempted to disconnect a non-existent client");
-    return;
-  }
-
-  std::string ip = it->second->getIp();
-  delete it->second;  // Client destructor closes the socket
-  clients_.erase(it);
-
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION,
-      "Disconnected successfully: " + ip);
-}
-
-void ConnectionManager::disconnectAll() {
-  for (std::map<int, Client*>::iterator it = clients_.begin();
-       it != clients_.end(); ++it) {
-    delete it->second;  // Client destructor closes the socket
-  }
-  clients_.clear();
+  return newUser;
 }
 
 ReceiveResult ConnectionManager::receiveData(
-    Client* client, std::vector<std::string>& messages) {
+    User* user, std::vector<std::string>& messages) {
   (void)this;  // Suppress unused warning
   char buffer[BUFFER_SIZE];
 
   // Read all available data (edge-triggered mode)
   while (true) {
-    ssize_t bytesRead = recv(client->getSocketFd(), buffer, BUFFER_SIZE - 1, 0);
+    ssize_t bytesRead = recv(user->getSocketFd(), buffer, BUFFER_SIZE - 1, 0);
 
     if (bytesRead > 0) {
-      client->getReadBuffer().append(buffer, bytesRead);
+      user->getReadBuffer().append(buffer, bytesRead);
 
       // Remove all Ctrl-D (EOT, '\x04') characters from the buffer
-      std::string& readBuf = client->getReadBuffer();
+      std::string& readBuf = user->getReadBuffer();
       readBuf.erase(std::remove(readBuf.begin(), readBuf.end(), '\x04'),
                     readBuf.end());
 
       // Prevent DoS attacks by limiting buffer size
       if (readBuf.size() > MAX_BUFFER_SIZE) {
         log(LOG_LEVEL_ERROR, LOG_CATEGORY_CONNECTION,
-            "Read buffer is too large: " + client->getIp());
+            "Read buffer is too large: " + user->getIp());
         return RECV_ERROR;
       }
 
@@ -122,7 +97,7 @@ ReceiveResult ConnectionManager::receiveData(
         pos = readBuf.find("\r\n");
       }
     } else if (bytesRead == 0) {
-      // The client closed the connection
+      // The user closed the connection
       return RECV_CLOSED;
     } else {
       // bytesRead < 0
@@ -138,9 +113,9 @@ ReceiveResult ConnectionManager::receiveData(
   }
 }
 
-SendResult ConnectionManager::sendData(Client* client) {
+SendResult ConnectionManager::sendData(User* user) {
   (void)this;  // Suppress unused warning
-  std::string& writeBuf = client->getWriteBuffer();
+  std::string& writeBuf = user->getWriteBuffer();
 
   if (writeBuf.empty()) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
@@ -149,7 +124,7 @@ SendResult ConnectionManager::sendData(Client* client) {
   }
 
   while (!writeBuf.empty()) {
-    ssize_t bytesSent = send(client->getSocketFd(), writeBuf.c_str(),
+    ssize_t bytesSent = send(user->getSocketFd(), writeBuf.c_str(),
                              writeBuf.size(), MSG_NOSIGNAL);
     if (bytesSent > 0) {
       // Remove the successfully sent data from the buffer
@@ -168,14 +143,4 @@ SendResult ConnectionManager::sendData(Client* client) {
 
   // All data sent
   return SEND_COMPLETE;
-}
-
-Client* ConnectionManager::getClient(int fd) {
-  std::map<int, Client*>::iterator it = clients_.find(fd);
-  if (it == clients_.end()) return NULL;
-  return it->second;
-}
-
-const std::map<int, Client*>& ConnectionManager::getClients() const {
-  return clients_;
 }
