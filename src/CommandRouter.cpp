@@ -275,6 +275,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
   const std::string& channelName = cmd.params[0];
 
   // Validate channel name
+  // NOTE: Channel names are case-insensitive per RFC1459
+  // ChannelManager normalizes names internally
   if (!isValidChannelName(channelName)) {
     sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
     return;
@@ -429,6 +431,9 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
       sendResponse(user, ResponseFormatter::errCannotSendToChan(target));
       return;
     }
+
+    // TODO(Phase 5): Check moderated mode (+m) - only ops/voiced users can send
+    // TODO(Phase 5): Check no-external messages (+n) - handled by membership check above
 
     // Broadcast message to all channel members except sender
     std::string privmsgMsg =

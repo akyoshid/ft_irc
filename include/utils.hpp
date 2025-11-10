@@ -46,5 +46,6 @@ void log(LogLevel level, LogCategory category, const std::string& message);
 std::string createErrorMessage(const std::string& context, int errsv);
 std::string int_to_string(int value);
 std::string normalizeNickname(const std::string& nickname);
+std::string normalizeChannelName(const std::string& channelName);
 
 #endif
