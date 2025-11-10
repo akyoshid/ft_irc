@@ -2,24 +2,15 @@
 #define INCLUDE_COMMANDROUTER_HPP_
 
 #include <string>
-#include <vector>
 
 #include "ChannelManager.hpp"
+#include "CommandParser.hpp"
 #include "ResponseFormatter.hpp"
 #include "User.hpp"
 #include "UserManager.hpp"
 
-// Command: Represents a parsed IRC command
-struct Command {
-  std::string prefix;   // Optional prefix (usually empty from clients)
-  std::string command;  // Command name (PASS, NICK, JOIN, etc.)
-  std::vector<std::string> params;  // Command parameters
-
-  Command() : prefix(""), command("") {}
-};
-
-// CommandRouter: Parses and routes IRC commands to appropriate handlers
-// Implements IRC message parsing per RFC1459 and dispatches to command handlers
+// CommandRouter: Routes IRC commands to appropriate handlers
+// Dispatches parsed commands to command handlers
 class CommandRouter {
  public:
   CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
@@ -27,21 +18,18 @@ class CommandRouter {
   ~CommandRouter();
 
   // Parse and execute IRC command from user
-  // message: Raw IRC message from client
+  // message: Raw IRC message from client (CRLF already stripped by
+  // ConnectionManager)
   void processMessage(User* user, const std::string& message);
 
  private:
   UserManager* userManager_;
   ChannelManager* channelManager_;
+  CommandParser* parser_;
   // NOTE: Password stored in plain text for educational purposes
   // Production systems should use secure memory handling (e.g., mlock,
   // explicit zeroing) C++98 has limited options for secure string handling
   std::string password_;
-
-  // ==========================================
-  // Parser
-  // ==========================================
-  Command parseCommand(const std::string& message);
 
   // ==========================================
   // Dispatcher

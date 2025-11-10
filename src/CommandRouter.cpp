@@ -1,17 +1,19 @@
 #include "CommandRouter.hpp"
 
-#include <algorithm>
-#include <cctype>
-#include <climits>
-#include <cstddef>
+#include <set>
+#include <string>
+#include <vector>
 
 #include "utils.hpp"
 
 CommandRouter::CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
                              const std::string& password)
-    : userManager_(userMgr), channelManager_(chanMgr), password_(password) {}
+    : userManager_(userMgr),
+      channelManager_(chanMgr),
+      parser_(new CommandParser()),
+      password_(password) {}
 
-CommandRouter::~CommandRouter() {}
+CommandRouter::~CommandRouter() { delete parser_; }
 
 // ==========================================
 // Main entry point
@@ -24,103 +26,18 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
     return;
   }
 
-  if (message.empty()) {
-    return;
-  }
-
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, user->getIp() + ": " + message);
 
-  Command cmd = parseCommand(message);
-  if (cmd.command.empty()) {
+  try {
+    Command cmd = parser_->parseCommand(message);
+    dispatch(user, cmd);
+  } catch (const std::exception& e) {
+    // Log detailed error internally
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
-        "Failed to parse command: " + message);
-    return;
+        "Failed to parse command from " + user->getIp() + ": " + e.what());
+    // Send sanitized error response to client (don't expose internal details)
+    sendResponse(user, "ERROR :Invalid message format\r\n");
   }
-
-  dispatch(user, cmd);
-}
-
-// ==========================================
-// Parser: RFC1459 message format
-// Format: [:prefix] COMMAND [params] [:trailing]
-// ==========================================
-
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
-Command CommandRouter::parseCommand(const std::string& message) {
-  Command cmd;
-  size_t pos = 0;
-
-  // Skip leading spaces
-  while (pos < message.length() && message[pos] == ' ') {
-    ++pos;
-  }
-
-  // Parse optional prefix (messages from clients usually don't have prefix)
-  if (pos < message.length() && message[pos] == ':') {
-    ++pos;
-    size_t spacePos = message.find(' ', pos);
-    if (spacePos != std::string::npos) {
-      cmd.prefix = message.substr(pos, spacePos - pos);
-      pos = spacePos + 1;
-    } else {
-      // Malformed: prefix but no command
-      return cmd;
-    }
-  }
-
-  // Skip spaces before command
-  while (pos < message.length() && message[pos] == ' ') {
-    ++pos;
-  }
-
-  // Parse command
-  size_t cmdEnd = pos;
-  while (cmdEnd < message.length() && message[cmdEnd] != ' ') {
-    ++cmdEnd;
-  }
-
-  if (cmdEnd == pos) {
-    // No command found
-    return cmd;
-  }
-
-  cmd.command = message.substr(pos, cmdEnd - pos);
-  // Convert command to uppercase for case-insensitive matching
-  for (size_t i = 0; i < cmd.command.length(); ++i) {
-    cmd.command[i] = std::toupper(cmd.command[i]);
-  }
-
-  pos = cmdEnd;
-
-  // Parse parameters
-  while (pos < message.length()) {
-    // Skip spaces
-    while (pos < message.length() && message[pos] == ' ') {
-      ++pos;
-    }
-
-    if (pos >= message.length()) {
-      break;
-    }
-
-    // Trailing parameter (starts with ':')
-    if (message[pos] == ':') {
-      ++pos;
-      cmd.params.push_back(message.substr(pos));
-      break;
-    }
-
-    // Regular parameter
-    size_t paramEnd = pos;
-    while (paramEnd < message.length() && message[paramEnd] != ' ') {
-      ++paramEnd;
-    }
-
-    cmd.params.push_back(message.substr(pos, paramEnd - pos));
-    pos = paramEnd;
-  }
-
-  return cmd;
 }
 
 // ==========================================
