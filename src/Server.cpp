@@ -36,7 +36,9 @@
 extern volatile sig_atomic_t g_shutdown;
 
 Server::Server(const std::string& portStr, const std::string& password)
-    : password_(password), serverSocket_(INVALID_FD) {
+    : password_(password),
+      serverSocket_(INVALID_FD),
+      cmdRouter_(&userManager_, &channelManager_) {
   validateAndSetPort(portStr);
   validatePassword(password);
   setupServerSocket();
@@ -170,7 +172,7 @@ void Server::handleUserRead(User* user) {
 
   // Process received messages
   for (size_t i = 0; i < messages.size(); ++i) {
-    cmdParser_.processMessage(user, messages[i]);
+    cmdRouter_.processMessage(user, messages[i]);
   }
 }
 

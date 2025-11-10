@@ -17,7 +17,9 @@ SRC = \
 			$(SRC_DIR)/ConnectionManager.cpp \
 			$(SRC_DIR)/CommandParser.cpp \
 			$(SRC_DIR)/UserManager.cpp \
-			$(SRC_DIR)/ChannelManager.cpp
+			$(SRC_DIR)/ChannelManager.cpp \
+			$(SRC_DIR)/ResponseFormatter.cpp \
+			$(SRC_DIR)/CommandRouter.cpp
 
 OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
