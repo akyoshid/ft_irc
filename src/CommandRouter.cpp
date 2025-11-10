@@ -261,13 +261,88 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleJoin(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "JOIN command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("JOIN"));
     return;
   }
-  // TODO(Phase 4): Implement channel joining
+
+  const std::string& channelName = cmd.params[0];
+
+  // Validate channel name
+  if (!isValidChannelName(channelName)) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    return;
+  }
+
+  // Get or create channel
+  Channel* channel = channelManager_->getChannel(channelName);
+  if (!channel) {
+    channel = channelManager_->createChannel(channelName);
+    if (!channel) {
+      log(LOG_LEVEL_ERROR, LOG_CATEGORY_CHANNEL,
+          "Failed to create channel: " + channelName);
+      return;
+    }
+    // First user becomes operator
+    channel->addOperator(user->getSocketFd());
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+        "Channel created: " + channelName + " by " + user->getNickname());
+  }
+
+  // Check if already in channel
+  if (channel->isMember(user->getSocketFd())) {
+    return;  // Already in channel, silently ignore
+  }
+
+  // Check channel modes
+  if (channel->isInviteOnly() && !channel->isInvited(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errInviteOnlyChan(channelName));
+    return;
+  }
+
+  if (channel->hasUserLimit() &&
+      channel->getMemberCount() >= channel->getUserLimit()) {
+    sendResponse(user, ResponseFormatter::errChannelIsFull(channelName));
+    return;
+  }
+
+  // Check channel key if set
+  if (!channel->getKey().empty()) {
+    std::string providedKey = cmd.params.size() > 1 ? cmd.params[1] : "";
+    if (providedKey != channel->getKey()) {
+      sendResponse(user, ResponseFormatter::errBadChannelKey(channelName));
+      return;
+    }
+  }
+
+  // Add user to channel
+  channel->addMember(user->getSocketFd());
+  user->joinChannel(channelName);
+
+  // Remove invite if present
+  if (channel->isInvited(user->getSocketFd())) {
+    channel->removeInvite(user->getSocketFd());
+  }
+
+  // Broadcast JOIN to all channel members (including the user)
+  std::string joinMsg = ResponseFormatter::rplJoin(user, channelName);
+  const std::set<int>& members = channel->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, joinMsg);
+    }
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+      user->getNickname() + " joined " + channelName);
 }
 
 void CommandRouter::handlePart(User* user, const Command& cmd) {
