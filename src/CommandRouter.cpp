@@ -346,13 +346,58 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePart(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "PART command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("PART"));
     return;
   }
-  // TODO(Phase 4): Implement channel leaving
+
+  const std::string& channelName = cmd.params[0];
+  std::string reason = cmd.params.size() > 1 ? cmd.params[1] : "";
+
+  // Get channel
+  Channel* channel = channelManager_->getChannel(channelName);
+  if (!channel) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    return;
+  }
+
+  // Check if user is in channel
+  if (!channel->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channelName));
+    return;
+  }
+
+  // Broadcast PART to all channel members (including the user)
+  std::string partMsg = ResponseFormatter::rplPart(user, channelName, reason);
+  const std::set<int>& members = channel->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, partMsg);
+    }
+  }
+
+  // Remove user from channel
+  channel->removeMember(user->getSocketFd());
+  channel->removeOperator(user->getSocketFd());
+  user->leaveChannel(channelName);
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+      user->getNickname() + " left " + channelName);
+
+  // Remove channel if empty
+  if (channel->getMemberCount() == 0) {
+    channelManager_->removeChannel(channelName);
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+        "Channel removed: " + channelName + " (empty)");
+  }
 }
 
 void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
