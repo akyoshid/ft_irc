@@ -702,14 +702,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // If no mode string, return current modes
   if (cmd.params.size() == 1) {
-    std::string modes = "+";
-    if (chan->isInviteOnly()) modes += "i";
-    if (chan->isTopicRestricted()) modes += "t";
-    if (chan->hasUserLimit()) {
-      modes += "l";
-    }
-    if (!chan->getKey().empty()) modes += "k";
-    sendResponse(user, ResponseFormatter::rplChannelModeIs(channel, modes));
+    sendResponse(user,
+                 ResponseFormatter::rplChannelModeIs(channel, getCurrentModes(chan)));
     return;
   }
 
@@ -739,63 +733,17 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
     // Handle each mode
     if (mode == 'i') {
-      chan->setInviteOnly(adding);
-      appliedModes += adding ? "+i" : "-i";
+      applyModeInviteOnly(chan, adding, appliedModes);
     } else if (mode == 't') {
-      chan->setTopicRestricted(adding);
-      appliedModes += adding ? "+t" : "-t";
+      applyModeTopicRestricted(chan, adding, appliedModes);
     } else if (mode == 'k') {
-      if (adding) {
-        if (argIndex < cmd.params.size()) {
-          chan->setKey(cmd.params[argIndex]);
-          appliedModes += "+k";
-          appliedArgs += appliedArgs.empty() ? "" : " ";
-          appliedArgs += cmd.params[argIndex];
-          ++argIndex;
-        }
-      } else {
-        chan->clearKey();
-        appliedModes += "-k";
-      }
+      applyModeKey(chan, adding, argIndex, cmd.params, appliedModes, appliedArgs);
     } else if (mode == 'o') {
-      if (argIndex < cmd.params.size()) {
-        const std::string& targetNick = cmd.params[argIndex];
-        User* targetUser = userManager_->getUserByNickname(targetNick);
-        if (targetUser && chan->isMember(targetUser->getSocketFd())) {
-          if (adding) {
-            chan->addOperator(targetUser->getSocketFd());
-          } else {
-            chan->removeOperator(targetUser->getSocketFd());
-          }
-          appliedModes += adding ? "+o" : "-o";
-          appliedArgs += appliedArgs.empty() ? "" : " ";
-          appliedArgs += targetNick;
-        }
-        ++argIndex;
-      }
+      applyModeOperator(chan, adding, argIndex, cmd.params, appliedModes,
+                        appliedArgs);
     } else if (mode == 'l') {
-      if (adding) {
-        if (argIndex < cmd.params.size()) {
-          // Simple string to int conversion for C++98
-          size_t limit = 0;
-          for (size_t j = 0; j < cmd.params[argIndex].length(); ++j) {
-            if (cmd.params[argIndex][j] >= '0' &&
-                cmd.params[argIndex][j] <= '9') {
-              limit = limit * 10 + (cmd.params[argIndex][j] - '0');
-            }
-          }
-          if (limit > 0) {
-            chan->setUserLimit(limit);
-            appliedModes += "+l";
-            appliedArgs += appliedArgs.empty() ? "" : " ";
-            appliedArgs += cmd.params[argIndex];
-          }
-          ++argIndex;
-        }
-      } else {
-        chan->clearUserLimit();
-        appliedModes += "-l";
-      }
+      applyModeUserLimit(chan, adding, argIndex, cmd.params, appliedModes,
+                         appliedArgs);
     } else {
       sendResponse(user, ResponseFormatter::errUnknownMode(mode));
     }
@@ -803,19 +751,7 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // Broadcast mode change to all channel members if any modes were applied
   if (!appliedModes.empty()) {
-    std::string modeMsg = ResponseFormatter::rplModeChange(
-        user, channel, appliedModes, appliedArgs);
-    const std::set<int>& members = chan->getMembers();
-    for (std::set<int>::const_iterator it = members.begin();
-         it != members.end(); ++it) {
-      User* member = userManager_->getUserByFd(*it);
-      if (member) {
-        sendResponse(member, modeMsg);
-      }
-    }
-
-    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-        user->getNickname() + " set mode " + appliedModes + " on " + channel);
+    broadcastModeChange(user, channel, appliedModes, appliedArgs, chan);
   }
 }
 
@@ -861,6 +797,117 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
   // Note: Actual disconnection is handled by Server layer
   // This just broadcasts the QUIT message to relevant users
+}
+
+// ==========================================
+// MODE command helper implementations
+// ==========================================
+
+std::string CommandRouter::getCurrentModes(Channel* chan) {
+  std::string modes = "+";
+  if (chan->isInviteOnly()) modes += "i";
+  if (chan->isTopicRestricted()) modes += "t";
+  if (chan->hasUserLimit()) modes += "l";
+  if (!chan->getKey().empty()) modes += "k";
+  return modes;
+}
+
+void CommandRouter::applyModeInviteOnly(Channel* chan, bool adding,
+                                        std::string& appliedModes) {
+  chan->setInviteOnly(adding);
+  appliedModes += adding ? "+i" : "-i";
+}
+
+void CommandRouter::applyModeTopicRestricted(Channel* chan, bool adding,
+                                             std::string& appliedModes) {
+  chan->setTopicRestricted(adding);
+  appliedModes += adding ? "+t" : "-t";
+}
+
+void CommandRouter::applyModeKey(Channel* chan, bool adding, size_t& argIndex,
+                                 const std::vector<std::string>& params,
+                                 std::string& appliedModes,
+                                 std::string& appliedArgs) {
+  if (adding) {
+    if (argIndex < params.size()) {
+      chan->setKey(params[argIndex]);
+      appliedModes += "+k";
+      appliedArgs += appliedArgs.empty() ? "" : " ";
+      appliedArgs += params[argIndex];
+      ++argIndex;
+    }
+  } else {
+    chan->clearKey();
+    appliedModes += "-k";
+  }
+}
+
+void CommandRouter::applyModeOperator(Channel* chan, bool adding,
+                                      size_t& argIndex,
+                                      const std::vector<std::string>& params,
+                                      std::string& appliedModes,
+                                      std::string& appliedArgs) {
+  if (argIndex >= params.size()) return;
+
+  const std::string& targetNick = params[argIndex];
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+  if (targetUser && chan->isMember(targetUser->getSocketFd())) {
+    if (adding) {
+      chan->addOperator(targetUser->getSocketFd());
+    } else {
+      chan->removeOperator(targetUser->getSocketFd());
+    }
+    appliedModes += adding ? "+o" : "-o";
+    appliedArgs += appliedArgs.empty() ? "" : " ";
+    appliedArgs += targetNick;
+  }
+  ++argIndex;
+}
+
+void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
+                                       size_t& argIndex,
+                                       const std::vector<std::string>& params,
+                                       std::string& appliedModes,
+                                       std::string& appliedArgs) {
+  if (adding) {
+    if (argIndex < params.size()) {
+      // Simple string to int conversion for C++98
+      size_t limit = 0;
+      for (size_t j = 0; j < params[argIndex].length(); ++j) {
+        if (params[argIndex][j] >= '0' && params[argIndex][j] <= '9') {
+          limit = limit * 10 + (params[argIndex][j] - '0');
+        }
+      }
+      if (limit > 0) {
+        chan->setUserLimit(limit);
+        appliedModes += "+l";
+        appliedArgs += appliedArgs.empty() ? "" : " ";
+        appliedArgs += params[argIndex];
+      }
+      ++argIndex;
+    }
+  } else {
+    chan->clearUserLimit();
+    appliedModes += "-l";
+  }
+}
+
+void CommandRouter::broadcastModeChange(User* user, const std::string& channel,
+                                        const std::string& appliedModes,
+                                        const std::string& appliedArgs,
+                                        Channel* chan) {
+  std::string modeMsg =
+      ResponseFormatter::rplModeChange(user, channel, appliedModes, appliedArgs);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, modeMsg);
+    }
+  }
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " set mode " + appliedModes + " on " + channel);
 }
 
 // ==========================================
