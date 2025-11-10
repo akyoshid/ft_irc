@@ -29,11 +29,25 @@ class ResponseFormatter {
                                 const std::string& message);
   static std::string rplNotice(const User* from, const std::string& target,
                                const std::string& message);
+  static std::string rplNoTopic(const std::string& channel);
   static std::string rplTopic(const std::string& channel,
                               const std::string& topic);
+  static std::string rplTopicChange(const User* user,
+                                    const std::string& channel,
+                                    const std::string& topic);
   static std::string rplKick(const User* kicker, const std::string& channel,
                              const std::string& kicked,
                              const std::string& reason);
+  static std::string rplInvite(const User* inviter, const std::string& invited,
+                               const std::string& channel);
+  static std::string rplInviting(const std::string& channel,
+                                 const std::string& nickname);
+  static std::string rplChannelModeIs(const std::string& channel,
+                                      const std::string& modes);
+  static std::string rplModeChange(const User* user, const std::string& channel,
+                                   const std::string& modes,
+                                   const std::string& args);
+  static std::string rplQuit(const User* user, const std::string& reason);
 
   // ==========================================
   // Error responses (400-599)
@@ -46,6 +60,8 @@ class ResponseFormatter {
   static std::string errErroneusNickname(const std::string& nickname);
   static std::string errNicknameInUse(const std::string& nickname);
   static std::string errNotOnChannel(const std::string& channel);
+  static std::string errUserNotInChannel(const std::string& user,
+                                         const std::string& channel);
   static std::string errUserOnChannel(const std::string& user,
                                       const std::string& channel);
   static std::string errNeedMoreParams(const std::string& command);
@@ -55,6 +71,10 @@ class ResponseFormatter {
   static std::string errInviteOnlyChan(const std::string& channel);
   static std::string errBadChannelKey(const std::string& channel);
   static std::string errChanOPrivsNeeded(const std::string& channel);
+  static std::string errUnknownMode(char mode);
+  static std::string errInvalidModeParam(const std::string& channel, char mode,
+                                         const std::string& param,
+                                         const std::string& description);
 
  private:
   // Helper: Format IRC message with prefix, command, and parameters

@@ -178,82 +178,757 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleJoin(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "JOIN command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("JOIN"));
     return;
   }
-  // TODO(Phase 4): Implement channel joining
+
+  const std::string& channelName = cmd.params[0];
+
+  // Validate channel name
+  // NOTE: Channel names are case-insensitive per RFC1459
+  // ChannelManager normalizes names internally
+  if (!isValidChannelName(channelName)) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    return;
+  }
+
+  // Get or create channel
+  Channel* channel = channelManager_->getChannel(channelName);
+  if (!channel) {
+    channel = channelManager_->createChannel(channelName);
+    if (!channel) {
+      log(LOG_LEVEL_ERROR, LOG_CATEGORY_CHANNEL,
+          "Failed to create channel: " + channelName);
+      return;
+    }
+    // First user becomes operator
+    channel->addOperator(user->getSocketFd());
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+        "Channel created: " + channelName + " by " + user->getNickname());
+  }
+
+  // Check if already in channel
+  if (channel->isMember(user->getSocketFd())) {
+    return;  // Already in channel, silently ignore
+  }
+
+  // Check channel modes
+  if (channel->isInviteOnly() && !channel->isInvited(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errInviteOnlyChan(channelName));
+    return;
+  }
+
+  if (channel->hasUserLimit() &&
+      channel->getMemberCount() >= channel->getUserLimit()) {
+    sendResponse(user, ResponseFormatter::errChannelIsFull(channelName));
+    return;
+  }
+
+  // Check channel key if set
+  if (!channel->getKey().empty()) {
+    std::string providedKey = cmd.params.size() > 1 ? cmd.params[1] : "";
+    if (providedKey != channel->getKey()) {
+      sendResponse(user, ResponseFormatter::errBadChannelKey(channelName));
+      return;
+    }
+  }
+
+  // Add user to channel
+  channel->addMember(user->getSocketFd());
+  user->joinChannel(channelName);
+
+  // Remove invite if present
+  if (channel->isInvited(user->getSocketFd())) {
+    channel->removeInvite(user->getSocketFd());
+  }
+
+  // Broadcast JOIN to all channel members (including the user)
+  std::string joinMsg = ResponseFormatter::rplJoin(user, channelName);
+  const std::set<int>& members = channel->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, joinMsg);
+    }
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+      user->getNickname() + " joined " + channelName);
 }
 
 void CommandRouter::handlePart(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "PART command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("PART"));
     return;
   }
-  // TODO(Phase 4): Implement channel leaving
+
+  const std::string& channelName = cmd.params[0];
+  std::string reason = cmd.params.size() > 1 ? cmd.params[1] : "";
+
+  // Get channel
+  Channel* channel = channelManager_->getChannel(channelName);
+  if (!channel) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    return;
+  }
+
+  // Check if user is in channel
+  if (!channel->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channelName));
+    return;
+  }
+
+  // Broadcast PART to all channel members (including the user)
+  std::string partMsg = ResponseFormatter::rplPart(user, channelName, reason);
+  const std::set<int>& members = channel->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, partMsg);
+    }
+  }
+
+  // Remove user from channel
+  channel->removeMember(user->getSocketFd());
+  channel->removeOperator(user->getSocketFd());
+  user->leaveChannel(channelName);
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+      user->getNickname() + " left " + channelName);
+
+  // Remove channel if empty
+  if (channel->getMemberCount() == 0) {
+    channelManager_->removeChannel(channelName);
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+        "Channel removed: " + channelName + " (empty)");
+  }
 }
 
 void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "PRIVMSG command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("PRIVMSG"));
     return;
   }
-  // TODO(Phase 4): Implement message sending
+
+  const std::string& target = cmd.params[0];
+  const std::string& message = cmd.params[1];
+
+  // Check if target is a channel or user
+  if (!target.empty() && (target[0] == '#' || target[0] == '&')) {
+    // Channel message
+    Channel* channel = channelManager_->getChannel(target);
+    if (!channel) {
+      sendResponse(user, ResponseFormatter::errNoSuchChannel(target));
+      return;
+    }
+
+    // Check if user is in channel
+    if (!channel->isMember(user->getSocketFd())) {
+      sendResponse(user, ResponseFormatter::errCannotSendToChan(target));
+      return;
+    }
+
+    // TODO(Phase 5): Check moderated mode (+m) - only ops/voiced users can send
+    // TODO(Phase 5): Check no-external messages (+n) - handled by membership
+    // check above
+
+    // Broadcast message to all channel members except sender
+    std::string privmsgMsg =
+        ResponseFormatter::rplPrivmsg(user, target, message);
+    const std::set<int>& members = channel->getMembers();
+    for (std::set<int>::const_iterator it = members.begin();
+         it != members.end(); ++it) {
+      if (*it != user->getSocketFd()) {  // Don't echo to sender
+        User* member = userManager_->getUserByFd(*it);
+        if (member) {
+          sendResponse(member, privmsgMsg);
+        }
+      }
+    }
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        user->getNickname() + " sent message to " + target);
+  } else {
+    // Private message to user
+    User* targetUser = userManager_->getUserByNickname(target);
+    if (!targetUser) {
+      sendResponse(user, ResponseFormatter::errNoSuchNick(target));
+      return;
+    }
+
+    std::string privmsgMsg =
+        ResponseFormatter::rplPrivmsg(user, target, message);
+    sendResponse(targetUser, privmsgMsg);
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        user->getNickname() + " sent private message to " + target);
+  }
 }
 
 void CommandRouter::handleKick(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "KICK command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // KICK <channel> <user> [:<reason>]
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("KICK"));
     return;
   }
-  // TODO(Phase 5): Implement kick functionality
+
+  const std::string& channel = cmd.params[0];
+  const std::string& targetNick = cmd.params[1];
+  std::string reason = "Kicked";
+  if (cmd.params.size() >= 3) {
+    reason = cmd.params[2];
+  }
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if kicker is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // Check if kicker is an operator
+  if (!chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Check if target user exists
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+  if (!targetUser) {
+    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    return;
+  }
+
+  // Check if target is on the channel
+  if (!chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(user,
+                 ResponseFormatter::errUserNotInChannel(targetNick, channel));
+    return;
+  }
+
+  // Broadcast KICK message to all channel members
+  std::string kickMsg =
+      ResponseFormatter::rplKick(user, channel, targetNick, reason);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, kickMsg);
+    }
+  }
+
+  // Remove target from channel
+  chan->removeMember(targetUser->getSocketFd());
+  targetUser->leaveChannel(channel);
+
+  // If channel is empty, remove it
+  if (chan->getMemberCount() == 0) {
+    channelManager_->removeChannel(channel);
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " kicked " + targetNick + " from " + channel);
 }
 
 void CommandRouter::handleInvite(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "INVITE command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // INVITE <nickname> <channel>
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("INVITE"));
     return;
   }
-  // TODO(Phase 5): Implement invite functionality
+
+  const std::string& targetNick = cmd.params[0];
+  const std::string& channel = cmd.params[1];
+
+  // Check if target user exists
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+  if (!targetUser) {
+    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    return;
+  }
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if inviter is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // Check if target is already on the channel
+  if (chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(user,
+                 ResponseFormatter::errUserOnChannel(targetNick, channel));
+    return;
+  }
+
+  // If channel is invite-only, only operators can invite
+  if (chan->isInviteOnly() && !chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Add target to invite list
+  chan->addInvite(targetUser->getSocketFd());
+
+  // Send confirmation to inviter (341 RPL_INVITING)
+  sendResponse(user, ResponseFormatter::rplInviting(channel, targetNick));
+
+  // Send INVITE message to target
+  sendResponse(targetUser,
+               ResponseFormatter::rplInvite(user, targetNick, channel));
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " invited " + targetNick + " to " + channel);
 }
 
 void CommandRouter::handleTopic(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "TOPIC command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // TOPIC <channel> [:<topic>]
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("TOPIC"));
     return;
   }
-  // TODO(Phase 5): Implement topic functionality
+
+  const std::string& channel = cmd.params[0];
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if user is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // If no topic parameter, return current topic
+  if (cmd.params.size() == 1) {
+    const std::string& currentTopic = chan->getTopic();
+    if (currentTopic.empty()) {
+      sendResponse(user, ResponseFormatter::rplNoTopic(channel));
+    } else {
+      sendResponse(user, ResponseFormatter::rplTopic(channel, currentTopic));
+    }
+    return;
+  }
+
+  // Setting topic - check permissions
+  if (chan->isTopicRestricted() && !chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Set new topic
+  const std::string& newTopic = cmd.params[1];
+  chan->setTopic(newTopic);
+
+  // Broadcast topic change to all channel members
+  std::string topicMsg =
+      ResponseFormatter::rplTopicChange(user, channel, newTopic);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, topicMsg);
+    }
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " changed topic of " + channel +
+          " to: " + newTopic);
 }
 
 void CommandRouter::handleMode(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "MODE command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // MODE <channel> [<modestring> [<mode arguments>...]]
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("MODE"));
     return;
   }
-  // TODO(Phase 5): Implement mode functionality
+
+  const std::string& channel = cmd.params[0];
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if user is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // If no mode string, return current modes
+  if (cmd.params.size() == 1) {
+    sendResponse(user, ResponseFormatter::rplChannelModeIs(
+                           channel, getCurrentModes(chan)));
+    return;
+  }
+
+  // Check if user is operator for mode changes
+  if (!chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Parse mode string
+  const std::string& modeString = cmd.params[1];
+
+  // Validate mode string is not empty
+  if (modeString.empty()) {
+    sendResponse(user, ResponseFormatter::errNeedMoreParams("MODE"));
+    return;
+  }
+
+  bool adding = true;
+  size_t argIndex = 2;
+  std::string appliedModes;
+  std::string appliedArgs;
+
+  for (size_t i = 0; i < modeString.length(); ++i) {
+    char mode = modeString[i];
+
+    if (mode == '+') {
+      adding = true;
+      continue;
+    }
+    if (mode == '-') {
+      adding = false;
+      continue;
+    }
+
+    // Handle each mode
+    if (mode == 'i') {
+      applyModeInviteOnly(chan, adding, appliedModes);
+    } else if (mode == 't') {
+      applyModeTopicRestricted(chan, adding, appliedModes);
+    } else if (mode == 'k') {
+      applyModeKey(user, chan, adding, argIndex, cmd.params, appliedModes,
+                   appliedArgs);
+    } else if (mode == 'o') {
+      applyModeOperator(user, chan, adding, argIndex, cmd.params, appliedModes,
+                        appliedArgs);
+    } else if (mode == 'l') {
+      applyModeUserLimit(user, chan, adding, argIndex, cmd.params, appliedModes,
+                         appliedArgs);
+    } else {
+      sendResponse(user, ResponseFormatter::errUnknownMode(mode));
+    }
+  }
+
+  // Broadcast mode change to all channel members if any modes were applied
+  if (!appliedModes.empty()) {
+    broadcastModeChange(user, channel, appliedModes, appliedArgs, chan);
+  }
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handleQuit(User* user, const Command& cmd) {
   std::string reason = cmd.params.empty() ? "Client quit" : cmd.params[0];
+
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
       "QUIT command received from: " + user->getNickname() + " (" + reason +
           ")");
-  // TODO(Phase 4): Implement graceful disconnect
+
+  // Broadcast QUIT to all channels the user is in
+  // Create copy to avoid iterator invalidation when removing user from channels
+  std::set<std::string> channelsCopy = user->getJoinedChannels();
+  for (std::set<std::string>::const_iterator it = channelsCopy.begin();
+       it != channelsCopy.end(); ++it) {
+    Channel* channel = channelManager_->getChannel(*it);
+    if (!channel) continue;
+
+    // Send QUIT message to all channel members except the quitting user
+    std::string quitMsg = ResponseFormatter::rplQuit(user, reason);
+    const std::set<int>& members = channel->getMembers();
+    for (std::set<int>::const_iterator mit = members.begin();
+         mit != members.end(); ++mit) {
+      if (*mit != user->getSocketFd()) {
+        User* member = userManager_->getUserByFd(*mit);
+        if (member) {
+          sendResponse(member, quitMsg);
+        }
+      }
+    }
+
+    // Remove user from channel
+    channel->removeMember(user->getSocketFd());
+    channel->removeOperator(user->getSocketFd());
+
+    // Remove channel if empty
+    if (channel->getMemberCount() == 0) {
+      channelManager_->removeChannel(*it);
+      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+          "Channel removed: " + *it + " (empty after QUIT)");
+    }
+  }
+
+  // Note: Actual disconnection is handled by Server layer
+  // This just broadcasts the QUIT message to relevant users
+}
+
+// ==========================================
+// MODE command helper implementations
+// ==========================================
+
+std::string CommandRouter::getCurrentModes(Channel* chan) {
+  std::string modes = "+";
+  if (chan->isInviteOnly()) modes += "i";
+  if (chan->isTopicRestricted()) modes += "t";
+  if (chan->hasUserLimit()) modes += "l";
+  if (!chan->getKey().empty()) modes += "k";
+  return modes;
+}
+
+void CommandRouter::applyModeInviteOnly(Channel* chan, bool adding,
+                                        std::string& appliedModes) {
+  chan->setInviteOnly(adding);
+  appliedModes += adding ? "+i" : "-i";
+}
+
+void CommandRouter::applyModeTopicRestricted(Channel* chan, bool adding,
+                                             std::string& appliedModes) {
+  chan->setTopicRestricted(adding);
+  appliedModes += adding ? "+t" : "-t";
+}
+
+void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
+                                 size_t& argIndex,
+                                 const std::vector<std::string>& params,
+                                 std::string& appliedModes,
+                                 std::string& appliedArgs) {
+  if (adding) {
+    if (argIndex < params.size()) {
+      const std::string& key = params[argIndex];
+
+      // Validate key according to RFC 1459
+      // Keys should not contain spaces, commas, or control characters
+      if (key.empty()) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'k', key,
+                                 "Invalid key: empty parameter"));
+        ++argIndex;
+        return;
+      }
+
+      // Check for invalid characters
+      for (size_t i = 0; i < key.length(); ++i) {
+        char c = key[i];
+        // Disallow spaces, commas, and control characters (< 0x20 or == 0x7F)
+        if (c == ' ' || c == ',' || c < 0x20 || c == 0x7F) {
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'k', key,
+                                   "Invalid key: contains invalid characters"));
+          ++argIndex;
+          return;
+        }
+      }
+
+      // Enforce reasonable length limit (23 chars per RFC 1459)
+      if (key.length() > 23) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'k', key,
+                                 "Invalid key: too long (max 23 characters)"));
+        ++argIndex;
+        return;
+      }
+
+      chan->setKey(key);
+      appliedModes += "+k";
+      appliedArgs += appliedArgs.empty() ? "" : " ";
+      appliedArgs += key;
+      ++argIndex;
+    }
+  } else {
+    chan->clearKey();
+    appliedModes += "-k";
+  }
+}
+
+void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
+                                      size_t& argIndex,
+                                      const std::vector<std::string>& params,
+                                      std::string& appliedModes,
+                                      std::string& appliedArgs) {
+  if (argIndex >= params.size()) return;
+
+  const std::string& targetNick = params[argIndex];
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+
+  if (!targetUser) {
+    sendResponse(sender, ResponseFormatter::errNoSuchNick(targetNick));
+    ++argIndex;
+    return;
+  }
+
+  if (!chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(sender, ResponseFormatter::errUserNotInChannel(
+                             targetNick, chan->getName()));
+    ++argIndex;
+    return;
+  }
+
+  if (adding) {
+    chan->addOperator(targetUser->getSocketFd());
+  } else {
+    // Prevent last operator from removing their own operator status
+    if (targetUser->getSocketFd() == sender->getSocketFd() &&
+        chan->getOperators().size() == 1) {
+      sendResponse(sender,
+                   ResponseFormatter::errChanOPrivsNeeded(chan->getName()));
+      ++argIndex;
+      return;
+    }
+    chan->removeOperator(targetUser->getSocketFd());
+  }
+  appliedModes += adding ? "+o" : "-o";
+  appliedArgs += appliedArgs.empty() ? "" : " ";
+  appliedArgs += targetNick;
+  ++argIndex;
+}
+
+void CommandRouter::applyModeUserLimit(User* sender, Channel* chan, bool adding,
+                                       size_t& argIndex,
+                                       const std::vector<std::string>& params,
+                                       std::string& appliedModes,
+                                       std::string& appliedArgs) {
+  if (adding) {
+    if (argIndex < params.size()) {
+      const std::string& limitStr = params[argIndex];
+
+      // Validate: non-empty and reasonable length
+      if (limitStr.empty()) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'l', limitStr,
+                                 "Invalid limit: empty parameter"));
+        ++argIndex;
+        return;
+      }
+
+      if (limitStr.length() > 10) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'l', limitStr,
+                                 "Invalid limit: too large"));
+        ++argIndex;
+        return;
+      }
+
+      // Check all characters are digits
+      for (size_t j = 0; j < limitStr.length(); ++j) {
+        if (limitStr[j] < '0' || limitStr[j] > '9') {
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'l', limitStr,
+                                   "Invalid limit: not a number"));
+          ++argIndex;
+          return;
+        }
+      }
+
+      // Parse with overflow protection
+      size_t limit = 0;
+      const size_t maxLimit =
+          static_cast<size_t>(-1);  // SIZE_MAX equivalent for C++98
+      for (size_t j = 0; j < limitStr.length(); ++j) {
+        size_t digit = limitStr[j] - '0';
+        // Check for overflow before multiplication
+        if (limit > (maxLimit - digit) / 10) {
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'l', limitStr,
+                                   "Invalid limit: number too large"));
+          ++argIndex;
+          return;
+        }
+        limit = (limit * 10) + digit;
+      }
+
+      if (limit > 0) {
+        chan->setUserLimit(limit);
+        appliedModes += "+l";
+        appliedArgs += appliedArgs.empty() ? "" : " ";
+        appliedArgs += limitStr;
+      }
+      ++argIndex;
+    }
+  } else {
+    chan->clearUserLimit();
+    appliedModes += "-l";
+  }
+}
+
+void CommandRouter::broadcastModeChange(User* user, const std::string& channel,
+                                        const std::string& appliedModes,
+                                        const std::string& appliedArgs,
+                                        Channel* chan) {
+  std::string modeMsg = ResponseFormatter::rplModeChange(
+      user, channel, appliedModes, appliedArgs);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, modeMsg);
+    }
+  }
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " set mode " + appliedModes + " on " + channel);
 }
 
 // ==========================================

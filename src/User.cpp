@@ -17,6 +17,8 @@
 #include <set>
 #include <string>
 
+#include "utils.hpp"
+
 User::User(int socketFd, const std::string& ip)
     : socketFd_(socketFd), ip_(ip), authenticated_(false), registered_(false) {}
 
@@ -56,15 +58,19 @@ void User::setRegistered(bool registered) { registered_ = registered; }
 
 // Channel operations
 void User::joinChannel(const std::string& channel) {
-  joinedChannels_.insert(channel);
+  // Normalize channel name to match ChannelManager's indexing
+  std::string normalizedChannel = normalizeChannelName(channel);
+  joinedChannels_.insert(normalizedChannel);
 }
 
 void User::leaveChannel(const std::string& channel) {
-  joinedChannels_.erase(channel);
+  std::string normalizedChannel = normalizeChannelName(channel);
+  joinedChannels_.erase(normalizedChannel);
 }
 
 bool User::isInChannel(const std::string& channel) const {
-  return joinedChannels_.find(channel) != joinedChannels_.end();
+  std::string normalizedChannel = normalizeChannelName(channel);
+  return joinedChannels_.find(normalizedChannel) != joinedChannels_.end();
 }
 
 const std::set<std::string>& User::getJoinedChannels() const {
