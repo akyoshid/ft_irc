@@ -720,6 +720,7 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // Validate mode string is not empty
   if (modeString.empty()) {
+    sendResponse(user, ResponseFormatter::errNeedMoreParams("MODE"));
     return;
   }
 
@@ -774,7 +775,7 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
   // Broadcast QUIT to all channels the user is in
   // Create copy to avoid iterator invalidation when removing user from channels
-  const std::set<std::string>& channelsCopy = user->getJoinedChannels();
+  std::set<std::string> channelsCopy = user->getJoinedChannels();
   for (std::set<std::string>::const_iterator it = channelsCopy.begin();
        it != channelsCopy.end(); ++it) {
     Channel* channel = channelManager_->getChannel(*it);
@@ -913,6 +914,13 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
   if (adding) {
     chan->addOperator(targetUser->getSocketFd());
   } else {
+    // Prevent last operator from removing their own operator status
+    if (targetUser->getSocketFd() == sender->getSocketFd() &&
+        chan->getOperators().size() == 1) {
+      sendResponse(sender, ResponseFormatter::errChanOPrivsNeeded(chan->getName()));
+      ++argIndex;
+      return;
+    }
     chan->removeOperator(targetUser->getSocketFd());
   }
   appliedModes += adding ? "+o" : "-o";
