@@ -176,6 +176,13 @@ std::string ResponseFormatter::errTooManyChannels(const std::string& channel) {
   return formatMessage("ft_irc", "405", params);
 }
 
+std::string ResponseFormatter::errUnknownCommand(const std::string& command) {
+  std::vector<std::string> params;
+  params.push_back(command);
+  params.push_back("Unknown command");
+  return formatMessage("ft_irc", "421", params);
+}
+
 std::string ResponseFormatter::errNicknameInUse(const std::string& nickname) {
   std::vector<std::string> params;
   params.push_back(nickname);

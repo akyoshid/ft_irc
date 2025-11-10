@@ -151,7 +151,7 @@ void CommandRouter::dispatch(User* user, const Command& cmd) {
   } else {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Unknown command: " + cmd.command);
-    sendResponse(user, ResponseFormatter::errNeedMoreParams(cmd.command));
+    sendResponse(user, ResponseFormatter::errUnknownCommand(cmd.command));
   }
 }
 
