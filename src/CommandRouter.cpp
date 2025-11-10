@@ -545,13 +545,64 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleInvite(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "INVITE command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // INVITE <nickname> <channel>
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("INVITE"));
     return;
   }
-  // TODO(Phase 5): Implement invite functionality
+
+  const std::string& targetNick = cmd.params[0];
+  const std::string& channel = cmd.params[1];
+
+  // Check if target user exists
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+  if (!targetUser) {
+    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    return;
+  }
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if inviter is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // Check if target is already on the channel
+  if (chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errUserOnChannel(targetNick, channel));
+    return;
+  }
+
+  // If channel is invite-only, only operators can invite
+  if (chan->isInviteOnly() && !chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Add target to invite list
+  chan->addInvite(targetUser->getSocketFd());
+
+  // Send confirmation to inviter (341 RPL_INVITING)
+  sendResponse(user, ResponseFormatter::rplInviting(channel, targetNick));
+
+  // Send INVITE message to target
+  std::string inviteMsg = ResponseFormatter::rplInvite(user, targetNick, channel);
+  sendResponse(targetUser, inviteMsg);
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " invited " + targetNick + " to " + channel);
 }
 
 void CommandRouter::handleTopic(User* user, const Command& cmd) {

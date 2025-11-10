@@ -144,6 +144,23 @@ std::string ResponseFormatter::rplKick(const User* kicker,
   return formatMessage(formatUserPrefix(kicker), "KICK", params);
 }
 
+std::string ResponseFormatter::rplInvite(const User* inviter,
+                                         const std::string& invited,
+                                         const std::string& channel) {
+  std::vector<std::string> params;
+  params.push_back(invited);
+  params.push_back(channel);
+  return formatMessage(formatUserPrefix(inviter), "INVITE", params);
+}
+
+std::string ResponseFormatter::rplInviting(const std::string& channel,
+                                           const std::string& nickname) {
+  std::vector<std::string> params;
+  params.push_back(nickname);
+  params.push_back(channel);
+  return formatMessage("ft_irc", "341", params);
+}
+
 std::string ResponseFormatter::rplQuit(const User* user,
                                        const std::string& reason) {
   std::vector<std::string> params;

@@ -34,6 +34,10 @@ class ResponseFormatter {
   static std::string rplKick(const User* kicker, const std::string& channel,
                              const std::string& kicked,
                              const std::string& reason);
+  static std::string rplInvite(const User* inviter, const std::string& invited,
+                               const std::string& channel);
+  static std::string rplInviting(const std::string& channel,
+                                 const std::string& nickname);
   static std::string rplQuit(const User* user, const std::string& reason);
 
   // ==========================================
