@@ -754,11 +754,12 @@ void CommandRouter::handlePing(User* user, const Command& cmd) {
     debugMsg += cmd.params[i];
   }
   debugMsg += "]";
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
       "PING from " + user->getIp() + " - " + debugMsg);
 
-  // RFC 1459: Server responses must have prefix ":server"
-  // Format: ":server PONG server :token"
+  // RFC 1459/2812: Server responses must have prefix ":server"
+  // Format: ":server PONG server <token>" or ":server PONG server :<token>"
+  // Using trailing parameter (:token) for safety with multi-word tokens
   std::string response;
   if (cmd.params.empty()) {
     // No token provided
@@ -769,7 +770,7 @@ void CommandRouter::handlePing(User* user, const Command& cmd) {
     response = ":ft_irc PONG ft_irc :" + token + "\r\n";
   }
 
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
       "PONG response to " + user->getIp() + ": [" +
           response.substr(0, response.length() - 2) + "]");
   sendResponse(user, response);
