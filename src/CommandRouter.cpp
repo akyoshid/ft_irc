@@ -7,9 +7,10 @@
 #include "utils.hpp"
 
 CommandRouter::CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
-                             const std::string& password)
+                             EventLoop* eventLoop, const std::string& password)
     : userManager_(userMgr),
       channelManager_(chanMgr),
+      eventLoop_(eventLoop),
       parser_(new CommandParser()),
       password_(password) {}
 
@@ -1091,6 +1092,8 @@ void CommandRouter::broadcastModeChange(User* user, const std::string& channel,
 void CommandRouter::sendResponse(User* user, const std::string& response) {
   if (!user) return;
   user->getWriteBuffer() += response;
+  // Register EPOLLOUT to notify EventLoop that write buffer has data
+  eventLoop_->modifyFd(user->getSocketFd(), EPOLLIN | EPOLLOUT);
 }
 
 void CommandRouter::completeRegistration(User* user) {
