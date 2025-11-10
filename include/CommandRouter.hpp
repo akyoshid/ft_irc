@@ -82,7 +82,8 @@ class CommandRouter {
                            const std::vector<std::string>& params,
                            std::string& appliedModes, std::string& appliedArgs);
   void applyModeOperator(User* sender, Channel* chan, bool adding,
-                         size_t& argIndex, const std::vector<std::string>& params,
+                         size_t& argIndex,
+                         const std::vector<std::string>& params,
                          std::string& appliedModes, std::string& appliedArgs);
   static void applyModeUserLimit(Channel* chan, bool adding, size_t& argIndex,
                                  const std::vector<std::string>& params,

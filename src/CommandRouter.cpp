@@ -869,8 +869,8 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
   }
 
   if (!chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(sender,
-                 ResponseFormatter::errUserNotInChannel(targetNick, chan->getName()));
+    sendResponse(sender, ResponseFormatter::errUserNotInChannel(
+                             targetNick, chan->getName()));
     ++argIndex;
     return;
   }
@@ -911,7 +911,8 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
 
       // Parse with overflow protection
       size_t limit = 0;
-      const size_t maxLimit = static_cast<size_t>(-1);  // SIZE_MAX equivalent for C++98
+      const size_t maxLimit =
+          static_cast<size_t>(-1);  // SIZE_MAX equivalent for C++98
       for (size_t j = 0; j < limitStr.length(); ++j) {
         size_t digit = limitStr[j] - '0';
         // Check for overflow before multiplication
