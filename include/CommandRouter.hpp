@@ -24,15 +24,11 @@ class CommandRouter {
  private:
   UserManager* userManager_;
   ChannelManager* channelManager_;
+  CommandParser* parser_;
   // NOTE: Password stored in plain text for educational purposes
   // Production systems should use secure memory handling (e.g., mlock,
   // explicit zeroing) C++98 has limited options for secure string handling
   std::string password_;
-
-  // ==========================================
-  // Parser
-  // ==========================================
-  Command parseCommand(const std::string& message);
 
   // ==========================================
   // Dispatcher
