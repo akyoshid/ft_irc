@@ -735,33 +735,10 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
 void CommandRouter::handleCap(User* user, const Command& cmd) {
   // CAP command is sent by modern IRC clients for capability negotiation
-  // We don't support any capabilities, so we just acknowledge and ignore it
+  // We don't support any capabilities, so just silently ignore it
   // This prevents "Unknown command" errors for clients using CAP
-
-  if (cmd.params.empty()) {
-    return;  // Silently ignore malformed CAP commands
-  }
-
-  const std::string& subcommand = cmd.params[0];
-
-  if (subcommand == "LS") {
-    // CAP LS: Client asks for list of capabilities
-    // Reply with empty list (we don't support any capabilities)
-    sendResponse(user, ":ft_irc CAP * LS :\r\n");
-  } else if (subcommand == "REQ") {
-    // CAP REQ: Client requests specific capabilities
-    // Reply NAK (we don't support any capabilities)
-    if (cmd.params.size() >= 2) {
-      std::string caps = cmd.params[1];
-      sendResponse(user, ":ft_irc CAP * NAK :" + caps + "\r\n");
-    }
-  } else if (subcommand == "END") {
-    // CAP END: Client finishes capability negotiation
-    // Just acknowledge, no action needed
-    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-        "CAP END received from: " + user->getIp());
-  }
-  // Silently ignore other CAP subcommands (LIST, etc.)
+  (void)user;  // Suppress unused parameter warning
+  (void)cmd;   // Suppress unused parameter warning
 }
 
 void CommandRouter::handlePing(User* user, const Command& cmd) {
