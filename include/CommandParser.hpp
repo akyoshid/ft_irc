@@ -15,18 +15,15 @@ struct Command {
   Command() : prefix(""), command("") {}
 };
 
-// CommandParser: Parses and processes IRC commands
-// Currently a stub implementation that only logs messages
-// Future: Will implement PASS, NICK, USER, JOIN, PRIVMSG, etc.
+// CommandParser: Parses IRC commands per RFC1459
 class CommandParser {
  public:
   CommandParser();
   ~CommandParser();
 
-  // Process a message from a user
-  // Currently: Just logs the message
-  // Future: Parse IRC commands and execute them
-  void processMessage(User* user, const std::string& message);
+  // Parse IRC message into Command structure
+  // Format: [:prefix] COMMAND [params] [:trailing]
+  Command parseCommand(const std::string& message);
 
  private:
   CommandParser(const CommandParser& src);             // = delete
