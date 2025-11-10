@@ -1,5 +1,9 @@
 #include "CommandRouter.hpp"
 
+#include <set>
+#include <string>
+#include <vector>
+
 #include "utils.hpp"
 
 CommandRouter::CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
@@ -28,14 +32,19 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, user->getIp() + ": " + message);
 
-  Command cmd = parser_->parseCommand(message);
-  if (cmd.command.empty()) {
+  try {
+    Command cmd = parser_->parseCommand(message);
+    dispatch(user, cmd);
+  } catch (const std::exception& e) {
+    // Log the error
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
-        "Failed to parse command: " + message);
-    return;
+        "Failed to parse command from " + user->getIp() + ": " + e.what());
+    // Send error response to client
+    std::string errorMsg = "ERROR :";
+    errorMsg += e.what();
+    errorMsg += "\r\n";
+    sendResponse(user, errorMsg);
   }
-
-  dispatch(user, cmd);
 }
 
 // ==========================================
