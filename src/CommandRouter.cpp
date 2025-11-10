@@ -858,10 +858,9 @@ void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
         char c = key[i];
         // Disallow spaces, commas, and control characters (< 0x20 or == 0x7F)
         if (c == ' ' || c == ',' || c < 0x20 || c == 0x7F) {
-          sendResponse(sender,
-                       ResponseFormatter::errInvalidModeParam(
-                           chan->getName(), 'k', key,
-                           "Invalid key: contains invalid characters"));
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'k', key,
+                                   "Invalid key: contains invalid characters"));
           ++argIndex;
           return;
         }
@@ -922,8 +921,8 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
   ++argIndex;
 }
 
-void CommandRouter::applyModeUserLimit(User* sender, Channel* chan,
-                                       bool adding, size_t& argIndex,
+void CommandRouter::applyModeUserLimit(User* sender, Channel* chan, bool adding,
+                                       size_t& argIndex,
                                        const std::vector<std::string>& params,
                                        std::string& appliedModes,
                                        std::string& appliedArgs) {

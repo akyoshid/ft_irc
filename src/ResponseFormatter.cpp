@@ -339,10 +339,9 @@ std::string ResponseFormatter::errUnknownMode(char mode) {
   return formatMessage("ft_irc", "472", params);
 }
 
-std::string ResponseFormatter::errInvalidModeParam(const std::string& channel,
-                                                   char mode,
-                                                   const std::string& param,
-                                                   const std::string& description) {
+std::string ResponseFormatter::errInvalidModeParam(
+    const std::string& channel, char mode, const std::string& param,
+    const std::string& description) {
   std::vector<std::string> params_vec;
   params_vec.push_back(channel);
   std::string modeStr(1, mode);
