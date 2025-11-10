@@ -1091,9 +1091,12 @@ void CommandRouter::broadcastModeChange(User* user, const std::string& channel,
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::sendResponse(User* user, const std::string& response) {
   if (!user) return;
+  bool wasEmpty = user->getWriteBuffer().empty();
   user->getWriteBuffer() += response;
-  // Register EPOLLOUT to notify EventLoop that write buffer has data
-  eventLoop_->modifyFd(user->getSocketFd(), EPOLLIN | EPOLLOUT);
+  // Register EPOLLOUT only when buffer transitions from empty to non-empty
+  if (wasEmpty) {
+    eventLoop_->modifyFd(user->getSocketFd(), EPOLLIN | EPOLLOUT);
+  }
 }
 
 void CommandRouter::completeRegistration(User* user) {
