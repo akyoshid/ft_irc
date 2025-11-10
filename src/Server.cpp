@@ -38,7 +38,7 @@ extern volatile sig_atomic_t g_shutdown;
 Server::Server(const std::string& portStr, const std::string& password)
     : password_(password),
       serverSocket_(INVALID_FD),
-      cmdRouter_(&userManager_, &channelManager_, password) {
+      cmdRouter_(&userManager_, &channelManager_, &eventLoop_, password) {
   validateAndSetPort(portStr);
   validatePassword(password);
   setupServerSocket();

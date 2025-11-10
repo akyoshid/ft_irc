@@ -5,6 +5,7 @@
 
 #include "ChannelManager.hpp"
 #include "CommandParser.hpp"
+#include "EventLoop.hpp"
 #include "ResponseFormatter.hpp"
 #include "User.hpp"
 #include "UserManager.hpp"
@@ -14,7 +15,7 @@
 class CommandRouter {
  public:
   CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
-                const std::string& password);
+                EventLoop* eventLoop, const std::string& password);
   ~CommandRouter();
 
   // Parse and execute IRC command from user
@@ -25,6 +26,7 @@ class CommandRouter {
  private:
   UserManager* userManager_;
   ChannelManager* channelManager_;
+  EventLoop* eventLoop_;
   CommandParser* parser_;
   // NOTE: Password stored in plain text for educational purposes
   // Production systems should use secure memory handling (e.g., mlock,
