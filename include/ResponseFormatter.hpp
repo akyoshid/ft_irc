@@ -43,6 +43,7 @@ class ResponseFormatter {
   static std::string errCannotSendToChan(const std::string& channel);
   static std::string errTooManyChannels(const std::string& channel);
   static std::string errUnknownCommand(const std::string& command);
+  static std::string errErroneusNickname(const std::string& nickname);
   static std::string errNicknameInUse(const std::string& nickname);
   static std::string errNotOnChannel(const std::string& channel);
   static std::string errUserOnChannel(const std::string& user,

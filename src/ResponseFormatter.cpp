@@ -183,6 +183,14 @@ std::string ResponseFormatter::errUnknownCommand(const std::string& command) {
   return formatMessage("ft_irc", "421", params);
 }
 
+std::string ResponseFormatter::errErroneusNickname(
+    const std::string& nickname) {
+  std::vector<std::string> params;
+  params.push_back(nickname);
+  params.push_back("Erroneous nickname");
+  return formatMessage("ft_irc", "432", params);
+}
+
 std::string ResponseFormatter::errNicknameInUse(const std::string& nickname) {
   std::vector<std::string> params;
   params.push_back(nickname);

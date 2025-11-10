@@ -22,7 +22,8 @@ struct Command {
 // Implements IRC message parsing per RFC1459 and dispatches to command handlers
 class CommandRouter {
  public:
-  CommandRouter(UserManager* userMgr, ChannelManager* chanMgr);
+  CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
+                const std::string& password);
   ~CommandRouter();
 
   // Parse and execute IRC command from user
@@ -32,6 +33,7 @@ class CommandRouter {
  private:
   UserManager* userManager_;
   ChannelManager* channelManager_;
+  std::string password_;
 
   // ==========================================
   // Parser

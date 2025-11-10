@@ -5,8 +5,9 @@
 
 #include "utils.hpp"
 
-CommandRouter::CommandRouter(UserManager* userMgr, ChannelManager* chanMgr)
-    : userManager_(userMgr), channelManager_(chanMgr) {}
+CommandRouter::CommandRouter(UserManager* userMgr, ChannelManager* chanMgr,
+                             const std::string& password)
+    : userManager_(userMgr), channelManager_(chanMgr), password_(password) {}
 
 CommandRouter::~CommandRouter() {}
 
@@ -159,13 +160,31 @@ void CommandRouter::dispatch(User* user, const Command& cmd) {
 // Command handlers (stub implementations)
 // ==========================================
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handlePass(User* user, const Command& cmd) {
-  (void)user;
+  // Check if user is already registered
+  if (user->isRegistered()) {
+    sendResponse(user, ResponseFormatter::errAlreadyRegistered());
+    return;
+  }
+
+  // Check parameter count
+  if (cmd.params.empty()) {
+    sendResponse(user, ResponseFormatter::errNeedMoreParams("PASS"));
+    return;
+  }
+
+  // Verify password
+  if (cmd.params[0] != password_) {
+    log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
+        "Authentication failed for " + user->getIp() + ": incorrect password");
+    sendResponse(user, ResponseFormatter::errPasswdMismatch());
+    return;
+  }
+
+  // Set authenticated flag
+  user->setAuthenticated(true);
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "PASS command received (stub): " +
-          (cmd.params.empty() ? "" : cmd.params[0]));
-  // TODO(Phase 3): Implement password verification
+      "Authentication successful for " + user->getIp());
 }
 
 void CommandRouter::handleNick(User* user, const Command& cmd) {
