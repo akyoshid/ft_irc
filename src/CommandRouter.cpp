@@ -733,6 +733,7 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
   // This just broadcasts the QUIT message to relevant users
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handleCap(User* user, const Command& cmd) {
   // CAP command is sent by modern IRC clients for capability negotiation
   // We don't support any capabilities, so just silently ignore it
@@ -758,6 +759,7 @@ void CommandRouter::handlePing(User* user, const Command& cmd) {
       "PING received from: " + user->getNickname() + " (token: " + token + ")");
 }
 
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handlePong(User* user, const Command& cmd) {
   // PONG: Response to server's PING
   // Currently we don't send PING to clients, but acknowledge PONG if received
