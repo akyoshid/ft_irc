@@ -45,12 +45,18 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 // ==========================================
 
 void CommandRouter::dispatch(User* user, const Command& cmd) {
-  if (cmd.command == "PASS") {
+  if (cmd.command == "CAP") {
+    handleCap(user, cmd);
+  } else if (cmd.command == "PASS") {
     handlePass(user, cmd);
   } else if (cmd.command == "NICK") {
     handleNick(user, cmd);
   } else if (cmd.command == "USER") {
     handleUser(user, cmd);
+  } else if (cmd.command == "PING") {
+    handlePing(user, cmd);
+  } else if (cmd.command == "PONG") {
+    handlePong(user, cmd);
   } else if (cmd.command == "JOIN") {
     handleJoin(user, cmd);
   } else if (cmd.command == "PART") {
@@ -725,6 +731,61 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
   // Note: Actual disconnection is handled by Server layer
   // This just broadcasts the QUIT message to relevant users
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+void CommandRouter::handleCap(User* user, const Command& cmd) {
+  // CAP command is sent by modern IRC clients for capability negotiation
+  // We don't support any capabilities, so just silently ignore it
+  // This prevents "Unknown command" errors for clients using CAP
+  (void)user;  // Suppress unused parameter warning
+  (void)cmd;   // Suppress unused parameter warning
+}
+
+void CommandRouter::handlePing(User* user, const Command& cmd) {
+  // PING: Keep-alive mechanism
+  // Reply with PONG using the same token
+
+  // Debug: Log the full PING command received
+  std::string debugMsg =
+      "PING command - prefix: [" + cmd.prefix + "], params: [";
+  for (size_t i = 0; i < cmd.params.size(); ++i) {
+    if (i > 0) debugMsg += ", ";
+    debugMsg += cmd.params[i];
+  }
+  debugMsg += "]";
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PING from " + user->getIp() + " - " + debugMsg);
+
+  // RFC 1459/2812: Server responses must have prefix ":server"
+  // Format: ":server PONG server <token>" or ":server PONG server :<token>"
+  // Using trailing parameter (:token) for safety with multi-word tokens
+  std::string response;
+  if (cmd.params.empty()) {
+    // No token provided
+    response = ":ft_irc PONG ft_irc\r\n";
+  } else {
+    // Echo back the token from PING
+    std::string token = cmd.params[0];
+    response = ":ft_irc PONG ft_irc :" + token + "\r\n";
+  }
+
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PONG response to " + user->getIp() + ": [" +
+          response.substr(0, response.length() - 2) + "]");
+  sendResponse(user, response);
+}
+
+// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
+void CommandRouter::handlePong(User* user, const Command& cmd) {
+  // PONG: Response to server's PING
+  // Currently we don't send PING to clients, but acknowledge PONG if received
+
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+      "PONG received from: " + user->getNickname());
+
+  (void)cmd;  // Suppress unused parameter warning
+  // No response needed for PONG
 }
 
 // ==========================================
