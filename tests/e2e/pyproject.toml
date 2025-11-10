@@ -1,0 +1,23 @@
+[project]
+name = "ft-irc-e2e-tests"
+version = "0.1.0"
+description = "End-to-end tests for ft_irc IRC server"
+requires-python = ">=3.8"
+dependencies = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-timeout>=2.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["."]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+timeout = 10
