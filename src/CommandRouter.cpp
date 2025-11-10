@@ -46,7 +46,7 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 // NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 Command CommandRouter::parseCommand(const std::string& message) {
   Command cmd;
-  std::string msg = message;
+  const std::string& msg = message;
   size_t pos = 0;
 
   // Skip leading spaces
