@@ -746,13 +746,13 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
     } else if (mode == 't') {
       applyModeTopicRestricted(chan, adding, appliedModes);
     } else if (mode == 'k') {
-      applyModeKey(chan, adding, argIndex, cmd.params, appliedModes,
+      applyModeKey(user, chan, adding, argIndex, cmd.params, appliedModes,
                    appliedArgs);
     } else if (mode == 'o') {
       applyModeOperator(user, chan, adding, argIndex, cmd.params, appliedModes,
                         appliedArgs);
     } else if (mode == 'l') {
-      applyModeUserLimit(chan, adding, argIndex, cmd.params, appliedModes,
+      applyModeUserLimit(user, chan, adding, argIndex, cmd.params, appliedModes,
                          appliedArgs);
     } else {
       sendResponse(user, ResponseFormatter::errUnknownMode(mode));
@@ -834,16 +834,52 @@ void CommandRouter::applyModeTopicRestricted(Channel* chan, bool adding,
   appliedModes += adding ? "+t" : "-t";
 }
 
-void CommandRouter::applyModeKey(Channel* chan, bool adding, size_t& argIndex,
+void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
+                                 size_t& argIndex,
                                  const std::vector<std::string>& params,
                                  std::string& appliedModes,
                                  std::string& appliedArgs) {
   if (adding) {
     if (argIndex < params.size()) {
-      chan->setKey(params[argIndex]);
+      const std::string& key = params[argIndex];
+
+      // Validate key according to RFC 1459
+      // Keys should not contain spaces, commas, or control characters
+      if (key.empty()) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'k', key,
+                                 "Invalid key: empty parameter"));
+        ++argIndex;
+        return;
+      }
+
+      // Check for invalid characters
+      for (size_t i = 0; i < key.length(); ++i) {
+        char c = key[i];
+        // Disallow spaces, commas, and control characters (< 0x20 or == 0x7F)
+        if (c == ' ' || c == ',' || c < 0x20 || c == 0x7F) {
+          sendResponse(sender,
+                       ResponseFormatter::errInvalidModeParam(
+                           chan->getName(), 'k', key,
+                           "Invalid key: contains invalid characters"));
+          ++argIndex;
+          return;
+        }
+      }
+
+      // Enforce reasonable length limit (23 chars per RFC 1459)
+      if (key.length() > 23) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'k', key,
+                                 "Invalid key: too long (max 23 characters)"));
+        ++argIndex;
+        return;
+      }
+
+      chan->setKey(key);
       appliedModes += "+k";
       appliedArgs += appliedArgs.empty() ? "" : " ";
-      appliedArgs += params[argIndex];
+      appliedArgs += key;
       ++argIndex;
     }
   } else {
@@ -886,8 +922,8 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
   ++argIndex;
 }
 
-void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
-                                       size_t& argIndex,
+void CommandRouter::applyModeUserLimit(User* sender, Channel* chan,
+                                       bool adding, size_t& argIndex,
                                        const std::vector<std::string>& params,
                                        std::string& appliedModes,
                                        std::string& appliedArgs) {
@@ -895,8 +931,19 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
     if (argIndex < params.size()) {
       const std::string& limitStr = params[argIndex];
 
-      // Validate: non-empty and all digits
-      if (limitStr.empty() || limitStr.length() > 10) {
+      // Validate: non-empty and reasonable length
+      if (limitStr.empty()) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'l', limitStr,
+                                 "Invalid limit: empty parameter"));
+        ++argIndex;
+        return;
+      }
+
+      if (limitStr.length() > 10) {
+        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                 chan->getName(), 'l', limitStr,
+                                 "Invalid limit: too large"));
         ++argIndex;
         return;
       }
@@ -904,6 +951,9 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
       // Check all characters are digits
       for (size_t j = 0; j < limitStr.length(); ++j) {
         if (limitStr[j] < '0' || limitStr[j] > '9') {
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'l', limitStr,
+                                   "Invalid limit: not a number"));
           ++argIndex;
           return;
         }
@@ -917,6 +967,9 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
         size_t digit = limitStr[j] - '0';
         // Check for overflow before multiplication
         if (limit > (maxLimit - digit) / 10) {
+          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
+                                   chan->getName(), 'l', limitStr,
+                                   "Invalid limit: number too large"));
           ++argIndex;
           return;
         }

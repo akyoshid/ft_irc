@@ -78,17 +78,16 @@ class CommandRouter {
                                   std::string& appliedModes);
   static void applyModeTopicRestricted(Channel* chan, bool adding,
                                        std::string& appliedModes);
-  static void applyModeKey(Channel* chan, bool adding, size_t& argIndex,
-                           const std::vector<std::string>& params,
-                           std::string& appliedModes, std::string& appliedArgs);
+  void applyModeKey(User* sender, Channel* chan, bool adding, size_t& argIndex,
+                    const std::vector<std::string>& params,
+                    std::string& appliedModes, std::string& appliedArgs);
   void applyModeOperator(User* sender, Channel* chan, bool adding,
                          size_t& argIndex,
                          const std::vector<std::string>& params,
                          std::string& appliedModes, std::string& appliedArgs);
-  static void applyModeUserLimit(Channel* chan, bool adding, size_t& argIndex,
-                                 const std::vector<std::string>& params,
-                                 std::string& appliedModes,
-                                 std::string& appliedArgs);
+  void applyModeUserLimit(User* sender, Channel* chan, bool adding,
+                          size_t& argIndex, const std::vector<std::string>& params,
+                          std::string& appliedModes, std::string& appliedArgs);
   void broadcastModeChange(User* user, const std::string& channel,
                            const std::string& appliedModes,
                            const std::string& appliedArgs, Channel* chan);
