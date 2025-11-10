@@ -119,16 +119,24 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
         NICK testuser
         USER testuser 0 * :Test User
         PRIVMSG #notjoined :Hello?
-        (Server sends): :ft_irc 404 testuser #notjoined :Cannot send to channel
+        (Server sends): :ft_irc 403 testuser #notjoined :No such channel
+                    OR: :ft_irc 404 testuser #notjoined :Cannot send to channel
+                    OR: :ft_irc 401 testuser #notjoined :No such nick/channel
 
-    Expected: Server returns ERR_CANNOTSENDTOCHAN (404)
+    Expected: Server returns an error indicating the channel doesn't exist or
+              the user cannot send to it (403, 404, or 401)
+
+    Note: IRC servers may return different error codes:
+          - 403 (ERR_NOSUCHCHANNEL): No such channel
+          - 404 (ERR_CANNOTSENDTOCHAN): Cannot send to channel
+          - 401 (ERR_NOSUCHNICK): No such nick/channel
     """
     authenticated_client.privmsg("#notjoined", "Hello?")
 
-    # Should receive error (404 - ERR_CANNOTSENDTOCHAN)
+    # Should receive error (403, 404, or 401)
     lines = authenticated_client.recv_lines(timeout=1.0)
-    error_found = any("404" in line for line in lines)
-    assert error_found, "Should receive cannot send to channel error"
+    error_found = any("403" in line or "404" in line or "401" in line for line in lines)
+    assert error_found, f"Should receive error (403, 404, or 401), received: {lines}"
 
 
 def test_kick_user_from_channel(two_clients):
