@@ -9,14 +9,14 @@ def test_privmsg_to_user(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
         PRIVMSG user2 :Hello user2!
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -47,7 +47,7 @@ def test_privmsg_to_channel(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -55,7 +55,7 @@ def test_privmsg_to_channel(two_clients):
         PRIVMSG #chat :Hello everyone in #chat!
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -93,7 +93,7 @@ def test_privmsg_to_nonexistent_user(authenticated_client):
     Test sending message to non-existent user.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -114,7 +114,7 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
     Test sending message to channel not joined.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -145,7 +145,7 @@ def test_kick_user_from_channel(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1 - operator):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -154,7 +154,7 @@ def test_kick_user_from_channel(two_clients):
         (Server sends): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -193,14 +193,14 @@ def test_kick_without_operator_privilege(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1 - operator):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
         JOIN #nokick
 
         Terminal 2 (user2 - regular user):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -237,7 +237,7 @@ def test_invite_user_to_channel(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1 - operator):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -247,7 +247,7 @@ def test_invite_user_to_channel(two_clients):
         (Server sends): :ft_irc 341 user1 user2 #invite-test
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -292,7 +292,7 @@ def test_invite_without_operator_privilege(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1 - operator):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -300,7 +300,7 @@ def test_invite_without_operator_privilege(two_clients):
         MODE #noinvite +i
 
         Terminal 2 (user2 - not in channel):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -365,7 +365,7 @@ def test_broadcast_message_to_all_channel_members(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -374,7 +374,7 @@ def test_broadcast_message_to_all_channel_members(two_clients):
         (Server does NOT echo back to sender)
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two

@@ -8,7 +8,7 @@ def test_connect_to_server(server_config):
     Test basic connection to IRC server.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         (Server sends): :ft_irc NOTICE * :Please authenticate with PASS command
 
     Expected: Server accepts TCP connection and sends initial NOTICE
@@ -31,7 +31,7 @@ def test_authentication_success(irc_client, server_config):
     Test successful authentication flow.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -61,7 +61,7 @@ def test_authentication_wrong_password(irc_client):
     Test authentication with wrong password.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS wrongpassword
         NICK testuser
         USER testuser 0 * :Test User
@@ -90,7 +90,7 @@ def test_authentication_no_password(irc_client):
     Test authentication without PASS command.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         NICK testuser
         USER testuser 0 * :Test User
         (No 001 welcome message)
@@ -118,13 +118,13 @@ def test_duplicate_nickname(authenticated_client, server_config):
 
     Manual reproduction:
         Terminal 1:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
 
         Terminal 2:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser2 0 * :Test User 2
@@ -163,7 +163,7 @@ def test_ping_pong(authenticated_client):
     Test PING/PONG mechanism.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User

@@ -8,7 +8,7 @@ def test_join_channel(authenticated_client):
     Test joining a channel.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -30,7 +30,7 @@ def test_join_multiple_channels(authenticated_client):
     Test joining multiple channels.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -64,7 +64,7 @@ def test_join_channel_with_key(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -72,7 +72,7 @@ def test_join_channel_with_key(two_clients):
         MODE #private +k secret123
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -113,7 +113,7 @@ def test_part_channel(authenticated_client):
     Test leaving a channel.
 
     Manual reproduction:
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK testuser
         USER testuser 0 * :Test User
@@ -143,7 +143,7 @@ def test_topic_operations(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -152,7 +152,7 @@ def test_topic_operations(two_clients):
         (Server sends): :user1!user1@localhost TOPIC #topic-test :Welcome to our IRC channel!
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -190,7 +190,7 @@ def test_mode_invite_only(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -199,7 +199,7 @@ def test_mode_invite_only(two_clients):
         (Server sends): :user1!user1@localhost MODE #invite-only +i
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -234,7 +234,7 @@ def test_mode_topic_restricted(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1 - operator):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -243,7 +243,7 @@ def test_mode_topic_restricted(two_clients):
         (Server sends): :user1!user1@localhost MODE #restricted +t
 
         Terminal 2 (user2 - regular user):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
@@ -284,7 +284,7 @@ def test_mode_user_limit(two_clients):
 
     Manual reproduction:
         Terminal 1 (user1):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user1
         USER user1 0 * :User One
@@ -293,7 +293,7 @@ def test_mode_user_limit(two_clients):
         (Server sends): :user1!user1@localhost MODE #limited +l 1
 
         Terminal 2 (user2):
-        $ telnet localhost 6667
+        $ nc -C localhost 6667
         PASS password
         NICK user2
         USER user2 0 * :User Two
