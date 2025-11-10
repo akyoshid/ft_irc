@@ -26,7 +26,23 @@ def test_join_channel(authenticated_client):
 
 
 def test_join_multiple_channels(authenticated_client):
-    """Test joining multiple channels."""
+    """
+    Test joining multiple channels.
+
+    Manual reproduction:
+        $ telnet localhost 6667
+        PASS password
+        NICK testuser
+        USER testuser 0 * :Test User
+        JOIN #test1
+        (Server sends): :testuser!testuser@localhost JOIN :#test1
+        JOIN #test2
+        (Server sends): :testuser!testuser@localhost JOIN :#test2
+        JOIN #test3
+        (Server sends): :testuser!testuser@localhost JOIN :#test3
+
+    Expected: Server confirms each JOIN separately
+    """
     channels = ["#test1", "#test2", "#test3"]
 
     for channel in channels:
@@ -93,7 +109,20 @@ def test_join_channel_with_key(two_clients):
 
 
 def test_part_channel(authenticated_client):
-    """Test leaving a channel."""
+    """
+    Test leaving a channel.
+
+    Manual reproduction:
+        $ telnet localhost 6667
+        PASS password
+        NICK testuser
+        USER testuser 0 * :Test User
+        JOIN #test
+        PART #test :Goodbye
+        (Server sends): :testuser!testuser@localhost PART #test :Goodbye
+
+    Expected: Server confirms PART and broadcasts to channel members
+    """
     # Join channel first
     authenticated_client.join("#test")
     time.sleep(0.2)
@@ -109,7 +138,29 @@ def test_part_channel(authenticated_client):
 
 
 def test_topic_operations(two_clients):
-    """Test setting and querying channel topic."""
+    """
+    Test setting and querying channel topic.
+
+    Manual reproduction:
+        Terminal 1 (user1):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #topic-test
+        TOPIC #topic-test :Welcome to our IRC channel!
+        (Server sends): :user1!user1@localhost TOPIC #topic-test :Welcome to our IRC channel!
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #topic-test
+        (Receives): :user1!user1@localhost TOPIC #topic-test :Welcome to our IRC channel!
+
+    Expected: Server broadcasts TOPIC change to all channel members
+    """
     client1, client2 = two_clients
 
     # Both join the same channel
@@ -134,7 +185,29 @@ def test_topic_operations(two_clients):
 
 
 def test_mode_invite_only(two_clients):
-    """Test invite-only mode (+i)."""
+    """
+    Test invite-only mode (+i).
+
+    Manual reproduction:
+        Terminal 1 (user1):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #invite-only
+        MODE #invite-only +i
+        (Server sends): :user1!user1@localhost MODE #invite-only +i
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #invite-only
+        (Server sends): :ft_irc 473 user2 #invite-only :Cannot join channel (+i)
+
+    Expected: Server rejects JOIN to invite-only channel without invite (ERR_INVITEONLYCHAN)
+    """
     client1, client2 = two_clients
 
     # Client1 creates channel
@@ -156,7 +229,30 @@ def test_mode_invite_only(two_clients):
 
 
 def test_mode_topic_restricted(two_clients):
-    """Test topic-restricted mode (+t)."""
+    """
+    Test topic-restricted mode (+t).
+
+    Manual reproduction:
+        Terminal 1 (user1 - operator):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #restricted
+        MODE #restricted +t
+        (Server sends): :user1!user1@localhost MODE #restricted +t
+
+        Terminal 2 (user2 - regular user):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #restricted
+        TOPIC #restricted :New topic by non-op
+        (Server sends): :ft_irc 482 user2 #restricted :You're not channel operator
+
+    Expected: Server rejects TOPIC from non-operators when +t is set (ERR_CHANOPRIVSNEEDED)
+    """
     client1, client2 = two_clients
 
     # Both join channel
@@ -183,7 +279,29 @@ def test_mode_topic_restricted(two_clients):
 
 
 def test_mode_user_limit(two_clients):
-    """Test user limit mode (+l)."""
+    """
+    Test user limit mode (+l).
+
+    Manual reproduction:
+        Terminal 1 (user1):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #limited
+        MODE #limited +l 1
+        (Server sends): :user1!user1@localhost MODE #limited +l 1
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #limited
+        (Server sends): :ft_irc 471 user2 #limited :Cannot join channel (+l)
+
+    Expected: Server rejects JOIN when user limit is reached (ERR_CHANNELISFULL)
+    """
     client1, client2 = two_clients
 
     # Client1 creates channel and sets user limit to 1

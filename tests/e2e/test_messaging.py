@@ -89,7 +89,19 @@ def test_privmsg_to_channel(two_clients):
 
 
 def test_privmsg_to_nonexistent_user(authenticated_client):
-    """Test sending message to non-existent user."""
+    """
+    Test sending message to non-existent user.
+
+    Manual reproduction:
+        $ telnet localhost 6667
+        PASS password
+        NICK testuser
+        USER testuser 0 * :Test User
+        PRIVMSG nonexistent :Hello?
+        (Server sends): :ft_irc 401 testuser nonexistent :No such nick/channel
+
+    Expected: Server returns ERR_NOSUCHNICK (401)
+    """
     authenticated_client.privmsg("nonexistent", "Hello?")
 
     # Should receive error (401 - ERR_NOSUCHNICK)
@@ -98,7 +110,19 @@ def test_privmsg_to_nonexistent_user(authenticated_client):
 
 
 def test_privmsg_to_channel_not_joined(authenticated_client):
-    """Test sending message to channel not joined."""
+    """
+    Test sending message to channel not joined.
+
+    Manual reproduction:
+        $ telnet localhost 6667
+        PASS password
+        NICK testuser
+        USER testuser 0 * :Test User
+        PRIVMSG #notjoined :Hello?
+        (Server sends): :ft_irc 404 testuser #notjoined :Cannot send to channel
+
+    Expected: Server returns ERR_CANNOTSENDTOCHAN (404)
+    """
     authenticated_client.privmsg("#notjoined", "Hello?")
 
     # Should receive error (404 - ERR_CANNOTSENDTOCHAN)
@@ -108,7 +132,29 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
 
 
 def test_kick_user_from_channel(two_clients):
-    """Test kicking a user from channel."""
+    """
+    Test kicking a user from channel.
+
+    Manual reproduction:
+        Terminal 1 (user1 - operator):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #kick-test
+        KICK #kick-test user2 :You have been kicked
+        (Server sends): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #kick-test
+        (Receives): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+
+    Expected: Server broadcasts KICK to all channel members and removes kicked user
+    """
     client1, client2 = two_clients
 
     # Both join the same channel
@@ -134,7 +180,28 @@ def test_kick_user_from_channel(two_clients):
 
 
 def test_kick_without_operator_privilege(two_clients):
-    """Test that non-operators cannot kick users."""
+    """
+    Test that non-operators cannot kick users.
+
+    Manual reproduction:
+        Terminal 1 (user1 - operator):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #nokick
+
+        Terminal 2 (user2 - regular user):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #nokick
+        KICK #nokick user1 :Trying to kick
+        (Server sends): :ft_irc 482 user2 #nokick :You're not channel operator
+
+    Expected: Server rejects KICK from non-operators (ERR_CHANOPRIVSNEEDED)
+    """
     client1, client2 = two_clients
 
     # Both join the same channel
@@ -157,7 +224,31 @@ def test_kick_without_operator_privilege(two_clients):
 
 
 def test_invite_user_to_channel(two_clients):
-    """Test inviting a user to channel."""
+    """
+    Test inviting a user to channel.
+
+    Manual reproduction:
+        Terminal 1 (user1 - operator):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #invite-test
+        MODE #invite-test +i
+        INVITE user2 #invite-test
+        (Server sends): :ft_irc 341 user1 user2 #invite-test
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        (Receives): :user1!user1@localhost INVITE user2 :#invite-test
+        JOIN #invite-test
+        (Server sends): :user2!user2@localhost JOIN :#invite-test
+
+    Expected: Server sends INVITE notification and allows invited user to join
+    """
     client1, client2 = two_clients
 
     # Client1 creates and sets invite-only channel
@@ -188,7 +279,29 @@ def test_invite_user_to_channel(two_clients):
 
 
 def test_invite_without_operator_privilege(two_clients):
-    """Test that non-operators cannot invite to invite-only channels."""
+    """
+    Test that non-operators cannot invite to invite-only channels.
+
+    Manual reproduction:
+        Terminal 1 (user1 - operator):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #noinvite
+        MODE #noinvite +i
+
+        Terminal 2 (user2 - not in channel):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        INVITE user3 #noinvite
+        (Server sends): :ft_irc 442 user2 #noinvite :You're not on that channel
+                    OR: :ft_irc 482 user2 #noinvite :You're not channel operator
+
+    Expected: Server rejects INVITE from users not in channel or non-operators
+    """
     client1, client2 = two_clients
 
     # Client1 creates invite-only channel
@@ -239,7 +352,29 @@ def test_invite_without_operator_privilege(two_clients):
 
 
 def test_broadcast_message_to_all_channel_members(two_clients):
-    """Test that messages are broadcast to all channel members."""
+    """
+    Test that messages are broadcast to all channel members.
+
+    Manual reproduction:
+        Terminal 1 (user1):
+        $ telnet localhost 6667
+        PASS password
+        NICK user1
+        USER user1 0 * :User One
+        JOIN #broadcast
+        PRIVMSG #broadcast :Broadcasting to all!
+        (Server does NOT echo back to sender)
+
+        Terminal 2 (user2):
+        $ telnet localhost 6667
+        PASS password
+        NICK user2
+        USER user2 0 * :User Two
+        JOIN #broadcast
+        (Receives): :user1!user1@localhost PRIVMSG #broadcast :Broadcasting to all!
+
+    Expected: Server broadcasts to all members EXCEPT the sender
+    """
     client1, client2 = two_clients
 
     # Both join the same channel
