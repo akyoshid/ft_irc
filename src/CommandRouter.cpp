@@ -516,15 +516,17 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
 
   // Check if target is on the channel
   if (!chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errUserNotInChannel(targetNick, channel));
+    sendResponse(user,
+                 ResponseFormatter::errUserNotInChannel(targetNick, channel));
     return;
   }
 
   // Broadcast KICK message to all channel members
-  std::string kickMsg = ResponseFormatter::rplKick(user, channel, targetNick, reason);
+  std::string kickMsg =
+      ResponseFormatter::rplKick(user, channel, targetNick, reason);
   const std::set<int>& members = chan->getMembers();
-  for (std::set<int>::const_iterator it = members.begin();
-       it != members.end(); ++it) {
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
     User* member = userManager_->getUserByFd(*it);
     if (member) {
       sendResponse(member, kickMsg);
@@ -581,7 +583,8 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 
   // Check if target is already on the channel
   if (chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errUserOnChannel(targetNick, channel));
+    sendResponse(user,
+                 ResponseFormatter::errUserOnChannel(targetNick, channel));
     return;
   }
 
@@ -598,8 +601,8 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
   sendResponse(user, ResponseFormatter::rplInviting(channel, targetNick));
 
   // Send INVITE message to target
-  std::string inviteMsg = ResponseFormatter::rplInvite(user, targetNick, channel);
-  sendResponse(targetUser, inviteMsg);
+  sendResponse(targetUser,
+               ResponseFormatter::rplInvite(user, targetNick, channel));
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
       user->getNickname() + " invited " + targetNick + " to " + channel);
@@ -654,10 +657,11 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   chan->setTopic(newTopic);
 
   // Broadcast topic change to all channel members
-  std::string topicMsg = ResponseFormatter::rplTopicChange(user, channel, newTopic);
+  std::string topicMsg =
+      ResponseFormatter::rplTopicChange(user, channel, newTopic);
   const std::set<int>& members = chan->getMembers();
-  for (std::set<int>::const_iterator it = members.begin();
-       it != members.end(); ++it) {
+  for (std::set<int>::const_iterator it = members.begin(); it != members.end();
+       ++it) {
     User* member = userManager_->getUserByFd(*it);
     if (member) {
       sendResponse(member, topicMsg);
@@ -665,7 +669,8 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   }
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      user->getNickname() + " changed topic of " + channel + " to: " + newTopic);
+      user->getNickname() + " changed topic of " + channel +
+          " to: " + newTopic);
 }
 
 void CommandRouter::handleMode(User* user, const Command& cmd) {
@@ -774,7 +779,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
           // Simple string to int conversion for C++98
           size_t limit = 0;
           for (size_t j = 0; j < cmd.params[argIndex].length(); ++j) {
-            if (cmd.params[argIndex][j] >= '0' && cmd.params[argIndex][j] <= '9') {
+            if (cmd.params[argIndex][j] >= '0' &&
+                cmd.params[argIndex][j] <= '9') {
               limit = limit * 10 + (cmd.params[argIndex][j] - '0');
             }
           }
@@ -797,7 +803,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // Broadcast mode change to all channel members if any modes were applied
   if (!appliedModes.empty()) {
-    std::string modeMsg = ResponseFormatter::rplModeChange(user, channel, appliedModes, appliedArgs);
+    std::string modeMsg = ResponseFormatter::rplModeChange(
+        user, channel, appliedModes, appliedArgs);
     const std::set<int>& members = chan->getMembers();
     for (std::set<int>::const_iterator it = members.begin();
          it != members.end(); ++it) {

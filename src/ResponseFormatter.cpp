@@ -267,7 +267,7 @@ std::string ResponseFormatter::errNotOnChannel(const std::string& channel) {
 }
 
 std::string ResponseFormatter::errUserNotInChannel(const std::string& user,
-                                                    const std::string& channel) {
+                                                   const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(user);
   params.push_back(channel);
