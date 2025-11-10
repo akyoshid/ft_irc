@@ -10,6 +10,11 @@
 #include "User.hpp"
 #include "UserManager.hpp"
 
+enum CommandResult {
+  CMD_CONTINUE,
+  CMD_DISCONNECT  // Need to disconnect the client
+};
+
 // CommandRouter: Routes IRC commands to appropriate handlers
 // Dispatches parsed commands to command handlers
 class CommandRouter {
@@ -21,7 +26,7 @@ class CommandRouter {
   // Parse and execute IRC command from user
   // message: Raw IRC message from client (CRLF already stripped by
   // ConnectionManager)
-  void processMessage(User* user, const std::string& message);
+  CommandResult processMessage(User* user, const std::string& message);
 
  private:
   UserManager* userManager_;
@@ -36,7 +41,7 @@ class CommandRouter {
   // ==========================================
   // Dispatcher
   // ==========================================
-  void dispatch(User* user, const Command& cmd);
+  CommandResult dispatch(User* user, const Command& cmd);
 
   // ==========================================
   // Command handlers (stub implementations for Phase 2)

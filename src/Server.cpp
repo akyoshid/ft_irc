@@ -172,7 +172,15 @@ void Server::handleUserRead(User* user) {
 
   // Process received messages
   for (size_t i = 0; i < messages.size(); ++i) {
-    cmdRouter_.processMessage(user, messages[i]);
+    CommandResult result = cmdRouter_.processMessage(user, messages[i]);
+    if (result == CMD_DISCONNECT) {
+      // Flush write buffer before disconnecting
+      if (!user->getWriteBuffer().empty()) {
+        connManager_.sendData(user);
+      }
+      disconnectUser(user->getSocketFd());
+      return;
+    }
   }
 }
 
