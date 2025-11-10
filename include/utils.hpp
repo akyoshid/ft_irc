@@ -45,5 +45,6 @@ std::string createLog(LogLevel level, LogCategory category,
 void log(LogLevel level, LogCategory category, const std::string& message);
 std::string createErrorMessage(const std::string& context, int errsv);
 std::string int_to_string(int value);
+std::string normalizeNickname(const std::string& nickname);
 
 #endif

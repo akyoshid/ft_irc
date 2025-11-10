@@ -208,6 +208,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
   }
 
   // Check if nickname is already in use by another user
+  // NOTE: Nickname comparison is case-insensitive per RFC1459
+  // UserManager normalizes nicknames internally
   // NOTE: This check-then-set pattern is safe in single-threaded context
   // Multi-threaded implementation would require atomic check-and-set
   if (userManager_->isNicknameInUse(newNick)) {

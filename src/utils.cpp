@@ -14,6 +14,7 @@
 
 #include <time.h>
 
+#include <cctype>
 #include <cerrno>
 #include <cstring>
 #include <iostream>
@@ -93,4 +94,13 @@ std::string int_to_string(int value) {
   std::ostringstream oss;
   oss << value;
   return oss.str();
+}
+
+std::string normalizeNickname(const std::string& nickname) {
+  std::string normalized;
+  normalized.reserve(nickname.length());
+  for (size_t i = 0; i < nickname.length(); ++i) {
+    normalized += std::tolower(static_cast<unsigned char>(nickname[i]));
+  }
+  return normalized;
 }

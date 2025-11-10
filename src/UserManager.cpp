@@ -16,8 +16,10 @@ void UserManager::addUser(User* user) {
   users_[user->getSocketFd()] = user;
 
   // Add to nickname index if user has a nickname
+  // Nicknames are case-insensitive per RFC1459
   if (!user->getNickname().empty()) {
-    usersByNick_[user->getNickname()] = user;
+    std::string normalizedNick = normalizeNickname(user->getNickname());
+    usersByNick_[normalizedNick] = user;
   }
 }
 
@@ -32,9 +34,10 @@ void UserManager::removeUser(int fd) {
   User* user = it->second;
   std::string ip = user->getIp();
 
-  // Remove from nickname index
+  // Remove from nickname index (case-insensitive)
   if (!user->getNickname().empty()) {
-    usersByNick_.erase(user->getNickname());
+    std::string normalizedNick = normalizeNickname(user->getNickname());
+    usersByNick_.erase(normalizedNick);
   }
 
   delete user;  // User destructor closes the socket
@@ -60,7 +63,8 @@ User* UserManager::getUserByFd(int fd) {
 }
 
 User* UserManager::getUserByNickname(const std::string& nickname) {
-  std::map<std::string, User*>::iterator it = usersByNick_.find(nickname);
+  std::string normalizedNick = normalizeNickname(nickname);
+  std::map<std::string, User*>::iterator it = usersByNick_.find(normalizedNick);
   if (it == usersByNick_.end()) return NULL;
   return it->second;
 }
@@ -68,7 +72,8 @@ User* UserManager::getUserByNickname(const std::string& nickname) {
 const std::map<int, User*>& UserManager::getUsers() const { return users_; }
 
 bool UserManager::isNicknameInUse(const std::string& nickname) const {
-  return usersByNick_.find(nickname) != usersByNick_.end();
+  std::string normalizedNick = normalizeNickname(nickname);
+  return usersByNick_.find(normalizedNick) != usersByNick_.end();
 }
 
 void UserManager::updateNickname(User* user, const std::string& oldNick,
@@ -79,16 +84,18 @@ void UserManager::updateNickname(User* user, const std::string& oldNick,
     return;
   }
 
-  // Remove old nickname from index
+  // Remove old nickname from index (case-insensitive)
   if (!oldNick.empty()) {
-    usersByNick_.erase(oldNick);
+    std::string normalizedOldNick = normalizeNickname(oldNick);
+    usersByNick_.erase(normalizedOldNick);
   }
 
-  // Update user's nickname
+  // Update user's nickname (preserve original case)
   user->setNickname(newNick);
 
-  // Add new nickname to index
+  // Add new nickname to index (case-insensitive)
   if (!newNick.empty()) {
-    usersByNick_[newNick] = user;
+    std::string normalizedNewNick = normalizeNickname(newNick);
+    usersByNick_[normalizedNewNick] = user;
   }
 }
