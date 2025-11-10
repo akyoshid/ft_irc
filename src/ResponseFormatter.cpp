@@ -144,6 +144,13 @@ std::string ResponseFormatter::rplKick(const User* kicker,
   return formatMessage(formatUserPrefix(kicker), "KICK", params);
 }
 
+std::string ResponseFormatter::rplQuit(const User* user,
+                                       const std::string& reason) {
+  std::vector<std::string> params;
+  params.push_back(reason);
+  return formatMessage(formatUserPrefix(user), "QUIT", params);
+}
+
 // ==========================================
 // Error responses (400-599)
 // ==========================================

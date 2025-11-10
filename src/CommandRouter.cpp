@@ -416,7 +416,7 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
   const std::string& message = cmd.params[1];
 
   // Check if target is a channel or user
-  if (target[0] == '#' || target[0] == '&') {
+  if (!target.empty() && (target[0] == '#' || target[0] == '&')) {
     // Channel message
     Channel* channel = channelManager_->getChannel(target);
     if (!channel) {
@@ -511,23 +511,15 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
           ")");
 
   // Broadcast QUIT to all channels the user is in
-  const std::set<std::string>& channels = user->getJoinedChannels();
-  for (std::set<std::string>::const_iterator it = channels.begin();
-       it != channels.end(); ++it) {
+  // Create copy to avoid iterator invalidation when removing user from channels
+  std::set<std::string> channelsCopy = user->getJoinedChannels();
+  for (std::set<std::string>::const_iterator it = channelsCopy.begin();
+       it != channelsCopy.end(); ++it) {
     Channel* channel = channelManager_->getChannel(*it);
     if (!channel) continue;
 
     // Send QUIT message to all channel members except the quitting user
-    // Format: :nick!user@host QUIT :reason
-    std::string quitMsg = ":";
-    quitMsg += user->getNickname();
-    quitMsg += "!";
-    quitMsg += user->getUsername();
-    quitMsg += "@";
-    quitMsg += user->getIp();
-    quitMsg += " QUIT :";
-    quitMsg += reason;
-    quitMsg += "\r\n";
+    std::string quitMsg = ResponseFormatter::rplQuit(user, reason);
     const std::set<int>& members = channel->getMembers();
     for (std::set<int>::const_iterator mit = members.begin();
          mit != members.end(); ++mit) {
