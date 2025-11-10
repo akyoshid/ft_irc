@@ -23,6 +23,8 @@ class CommandParser {
 
   // Parse IRC message into Command structure
   // Format: [:prefix] COMMAND [params] [:trailing]
+  // message: Raw IRC message (CRLF terminator already stripped)
+  // Throws: std::runtime_error if message format is invalid
   Command parseCommand(const std::string& message);
 
  private:

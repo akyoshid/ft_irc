@@ -26,24 +26,17 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
     return;
   }
 
-  if (message.empty()) {
-    return;
-  }
-
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, user->getIp() + ": " + message);
 
   try {
     Command cmd = parser_->parseCommand(message);
     dispatch(user, cmd);
   } catch (const std::exception& e) {
-    // Log the error
+    // Log detailed error internally
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Failed to parse command from " + user->getIp() + ": " + e.what());
-    // Send error response to client
-    std::string errorMsg = "ERROR :";
-    errorMsg += e.what();
-    errorMsg += "\r\n";
-    sendResponse(user, errorMsg);
+    // Send sanitized error response to client (don't expose internal details)
+    sendResponse(user, "ERROR :Invalid message format\r\n");
   }
 }
 

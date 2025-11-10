@@ -18,7 +18,8 @@ class CommandRouter {
   ~CommandRouter();
 
   // Parse and execute IRC command from user
-  // message: Raw IRC message from client
+  // message: Raw IRC message from client (CRLF already stripped by
+  // ConnectionManager)
   void processMessage(User* user, const std::string& message);
 
  private:
