@@ -7,6 +7,9 @@ ChannelManager::ChannelManager() {}
 ChannelManager::~ChannelManager() { removeAll(); }
 
 Channel* ChannelManager::createChannel(const std::string& name) {
+  // Normalize channel name (case-insensitive per RFC1459)
+  std::string normalizedName = normalizeChannelName(name);
+
   // Check if channel already exists
   if (channelExists(name)) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CHANNEL,
@@ -15,10 +18,11 @@ Channel* ChannelManager::createChannel(const std::string& name) {
   }
 
   // Create new channel with exception safety
+  // Store with original name but index with normalized name
   Channel* newChannel = NULL;
   try {
     newChannel = new Channel(name);
-    channels_[name] = newChannel;
+    channels_[normalizedName] = newChannel;
   } catch (...) {
     delete newChannel;  // NULL-safe in C++
     throw;
@@ -29,7 +33,8 @@ Channel* ChannelManager::createChannel(const std::string& name) {
 }
 
 void ChannelManager::removeChannel(const std::string& name) {
-  std::map<std::string, Channel*>::iterator it = channels_.find(name);
+  std::string normalizedName = normalizeChannelName(name);
+  std::map<std::string, Channel*>::iterator it = channels_.find(normalizedName);
   if (it == channels_.end()) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_CHANNEL,
         "Attempted to remove non-existent channel: " + name);
@@ -51,7 +56,8 @@ void ChannelManager::removeAll() {
 }
 
 Channel* ChannelManager::getChannel(const std::string& name) {
-  std::map<std::string, Channel*>::iterator it = channels_.find(name);
+  std::string normalizedName = normalizeChannelName(name);
+  std::map<std::string, Channel*>::iterator it = channels_.find(normalizedName);
   if (it == channels_.end()) return NULL;
   return it->second;
 }
@@ -61,5 +67,6 @@ const std::map<std::string, Channel*>& ChannelManager::getChannels() const {
 }
 
 bool ChannelManager::channelExists(const std::string& name) const {
-  return channels_.find(name) != channels_.end();
+  std::string normalizedName = normalizeChannelName(name);
+  return channels_.find(normalizedName) != channels_.end();
 }

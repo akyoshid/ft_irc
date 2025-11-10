@@ -34,6 +34,7 @@ class ResponseFormatter {
   static std::string rplKick(const User* kicker, const std::string& channel,
                              const std::string& kicked,
                              const std::string& reason);
+  static std::string rplQuit(const User* user, const std::string& reason);
 
   // ==========================================
   // Error responses (400-599)

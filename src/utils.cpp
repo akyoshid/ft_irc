@@ -104,3 +104,12 @@ std::string normalizeNickname(const std::string& nickname) {
   }
   return normalized;
 }
+
+std::string normalizeChannelName(const std::string& channelName) {
+  std::string normalized;
+  normalized.reserve(channelName.length());
+  for (size_t i = 0; i < channelName.length(); ++i) {
+    normalized += std::tolower(static_cast<unsigned char>(channelName[i]));
+  }
+  return normalized;
+}
