@@ -401,13 +401,64 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "PRIVMSG command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // Check parameter count
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("PRIVMSG"));
     return;
   }
-  // TODO(Phase 4): Implement message sending
+
+  const std::string& target = cmd.params[0];
+  const std::string& message = cmd.params[1];
+
+  // Check if target is a channel or user
+  if (target[0] == '#' || target[0] == '&') {
+    // Channel message
+    Channel* channel = channelManager_->getChannel(target);
+    if (!channel) {
+      sendResponse(user, ResponseFormatter::errNoSuchChannel(target));
+      return;
+    }
+
+    // Check if user is in channel
+    if (!channel->isMember(user->getSocketFd())) {
+      sendResponse(user, ResponseFormatter::errCannotSendToChan(target));
+      return;
+    }
+
+    // Broadcast message to all channel members except sender
+    std::string privmsgMsg = ResponseFormatter::rplPrivmsg(user, target, message);
+    const std::set<int>& members = channel->getMembers();
+    for (std::set<int>::const_iterator it = members.begin();
+         it != members.end(); ++it) {
+      if (*it != user->getSocketFd()) {  // Don't echo to sender
+        User* member = userManager_->getUserByFd(*it);
+        if (member) {
+          sendResponse(member, privmsgMsg);
+        }
+      }
+    }
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        user->getNickname() + " sent message to " + target);
+  } else {
+    // Private message to user
+    User* targetUser = userManager_->getUserByNickname(target);
+    if (!targetUser) {
+      sendResponse(user, ResponseFormatter::errNoSuchNick(target));
+      return;
+    }
+
+    std::string privmsgMsg = ResponseFormatter::rplPrivmsg(user, target, message);
+    sendResponse(targetUser, privmsgMsg);
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        user->getNickname() + " sent private message to " + target);
+  }
 }
 
 void CommandRouter::handleKick(User* user, const Command& cmd) {
