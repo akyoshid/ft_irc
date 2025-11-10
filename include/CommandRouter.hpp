@@ -73,19 +73,21 @@ class CommandRouter {
   bool isValidNickname(const std::string& nickname);
 
   // MODE command helpers
-  std::string getCurrentModes(Channel* chan);
-  void applyModeInviteOnly(Channel* chan, bool adding, std::string& appliedModes);
-  void applyModeTopicRestricted(Channel* chan, bool adding,
-                                std::string& appliedModes);
-  void applyModeKey(Channel* chan, bool adding, size_t& argIndex,
-                    const std::vector<std::string>& params,
-                    std::string& appliedModes, std::string& appliedArgs);
+  static std::string getCurrentModes(Channel* chan);
+  static void applyModeInviteOnly(Channel* chan, bool adding,
+                                  std::string& appliedModes);
+  static void applyModeTopicRestricted(Channel* chan, bool adding,
+                                       std::string& appliedModes);
+  static void applyModeKey(Channel* chan, bool adding, size_t& argIndex,
+                           const std::vector<std::string>& params,
+                           std::string& appliedModes, std::string& appliedArgs);
   void applyModeOperator(Channel* chan, bool adding, size_t& argIndex,
                          const std::vector<std::string>& params,
                          std::string& appliedModes, std::string& appliedArgs);
-  void applyModeUserLimit(Channel* chan, bool adding, size_t& argIndex,
-                          const std::vector<std::string>& params,
-                          std::string& appliedModes, std::string& appliedArgs);
+  static void applyModeUserLimit(Channel* chan, bool adding, size_t& argIndex,
+                                 const std::vector<std::string>& params,
+                                 std::string& appliedModes,
+                                 std::string& appliedArgs);
   void broadcastModeChange(User* user, const std::string& channel,
                            const std::string& appliedModes,
                            const std::string& appliedArgs, Channel* chan);

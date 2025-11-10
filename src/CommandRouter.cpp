@@ -702,8 +702,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // If no mode string, return current modes
   if (cmd.params.size() == 1) {
-    sendResponse(user,
-                 ResponseFormatter::rplChannelModeIs(channel, getCurrentModes(chan)));
+    sendResponse(user, ResponseFormatter::rplChannelModeIs(
+                           channel, getCurrentModes(chan)));
     return;
   }
 
@@ -726,7 +726,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
     if (mode == '+') {
       adding = true;
       continue;
-    } else if (mode == '-') {
+    }
+    if (mode == '-') {
       adding = false;
       continue;
     }
@@ -737,7 +738,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
     } else if (mode == 't') {
       applyModeTopicRestricted(chan, adding, appliedModes);
     } else if (mode == 'k') {
-      applyModeKey(chan, adding, argIndex, cmd.params, appliedModes, appliedArgs);
+      applyModeKey(chan, adding, argIndex, cmd.params, appliedModes,
+                   appliedArgs);
     } else if (mode == 'o') {
       applyModeOperator(chan, adding, argIndex, cmd.params, appliedModes,
                         appliedArgs);
@@ -764,7 +766,7 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
 
   // Broadcast QUIT to all channels the user is in
   // Create copy to avoid iterator invalidation when removing user from channels
-  std::set<std::string> channelsCopy = user->getJoinedChannels();
+  const std::set<std::string>& channelsCopy = user->getJoinedChannels();
   for (std::set<std::string>::const_iterator it = channelsCopy.begin();
        it != channelsCopy.end(); ++it) {
     Channel* channel = channelManager_->getChannel(*it);
@@ -875,7 +877,7 @@ void CommandRouter::applyModeUserLimit(Channel* chan, bool adding,
       size_t limit = 0;
       for (size_t j = 0; j < params[argIndex].length(); ++j) {
         if (params[argIndex][j] >= '0' && params[argIndex][j] <= '9') {
-          limit = limit * 10 + (params[argIndex][j] - '0');
+          limit = (limit * 10) + (params[argIndex][j] - '0');
         }
       }
       if (limit > 0) {
@@ -896,8 +898,8 @@ void CommandRouter::broadcastModeChange(User* user, const std::string& channel,
                                         const std::string& appliedModes,
                                         const std::string& appliedArgs,
                                         Channel* chan) {
-  std::string modeMsg =
-      ResponseFormatter::rplModeChange(user, channel, appliedModes, appliedArgs);
+  std::string modeMsg = ResponseFormatter::rplModeChange(
+      user, channel, appliedModes, appliedArgs);
   const std::set<int>& members = chan->getMembers();
   for (std::set<int>::const_iterator it = members.begin(); it != members.end();
        ++it) {
