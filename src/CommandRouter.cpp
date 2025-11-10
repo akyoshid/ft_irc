@@ -501,13 +501,50 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
   // TODO(Phase 5): Implement mode functionality
 }
 
-// NOLINTNEXTLINE(readability-convert-member-functions-to-static)
 void CommandRouter::handleQuit(User* user, const Command& cmd) {
   std::string reason = cmd.params.empty() ? "Client quit" : cmd.params[0];
+
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
       "QUIT command received from: " + user->getNickname() + " (" + reason +
           ")");
-  // TODO(Phase 4): Implement graceful disconnect
+
+  // Broadcast QUIT to all channels the user is in
+  const std::set<std::string>& channels = user->getJoinedChannels();
+  for (std::set<std::string>::const_iterator it = channels.begin();
+       it != channels.end(); ++it) {
+    Channel* channel = channelManager_->getChannel(*it);
+    if (!channel) continue;
+
+    // Send QUIT message to all channel members except the quitting user
+    // Format: :nick!user@host QUIT :reason
+    std::string prefix = user->getNickname() + "!" + user->getUsername() +
+                         "@" + user->getIp();
+    std::string quitMsg = ":" + prefix + " QUIT :" + reason + "\r\n";
+    const std::set<int>& members = channel->getMembers();
+    for (std::set<int>::const_iterator mit = members.begin();
+         mit != members.end(); ++mit) {
+      if (*mit != user->getSocketFd()) {
+        User* member = userManager_->getUserByFd(*mit);
+        if (member) {
+          sendResponse(member, quitMsg);
+        }
+      }
+    }
+
+    // Remove user from channel
+    channel->removeMember(user->getSocketFd());
+    channel->removeOperator(user->getSocketFd());
+
+    // Remove channel if empty
+    if (channel->getMemberCount() == 0) {
+      channelManager_->removeChannel(*it);
+      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+          "Channel removed: " + *it + " (empty after QUIT)");
+    }
+  }
+
+  // Note: Actual disconnection is handled by Server layer
+  // This just broadcasts the QUIT message to relevant users
 }
 
 // ==========================================
