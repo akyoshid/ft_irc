@@ -29,8 +29,11 @@ class ResponseFormatter {
                                 const std::string& message);
   static std::string rplNotice(const User* from, const std::string& target,
                                const std::string& message);
+  static std::string rplNoTopic(const std::string& channel);
   static std::string rplTopic(const std::string& channel,
                               const std::string& topic);
+  static std::string rplTopicChange(const User* user, const std::string& channel,
+                                    const std::string& topic);
   static std::string rplKick(const User* kicker, const std::string& channel,
                              const std::string& kicked,
                              const std::string& reason);

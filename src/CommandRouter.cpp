@@ -606,13 +606,66 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleTopic(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "TOPIC command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // TOPIC <channel> [:<topic>]
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("TOPIC"));
     return;
   }
-  // TODO(Phase 5): Implement topic functionality
+
+  const std::string& channel = cmd.params[0];
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if user is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // If no topic parameter, return current topic
+  if (cmd.params.size() == 1) {
+    const std::string& currentTopic = chan->getTopic();
+    if (currentTopic.empty()) {
+      sendResponse(user, ResponseFormatter::rplNoTopic(channel));
+    } else {
+      sendResponse(user, ResponseFormatter::rplTopic(channel, currentTopic));
+    }
+    return;
+  }
+
+  // Setting topic - check permissions
+  if (chan->isTopicRestricted() && !chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Set new topic
+  const std::string& newTopic = cmd.params[1];
+  chan->setTopic(newTopic);
+
+  // Broadcast topic change to all channel members
+  std::string topicMsg = ResponseFormatter::rplTopicChange(user, channel, newTopic);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin();
+       it != members.end(); ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, topicMsg);
+    }
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " changed topic of " + channel + " to: " + newTopic);
 }
 
 void CommandRouter::handleMode(User* user, const Command& cmd) {

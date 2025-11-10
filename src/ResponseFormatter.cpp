@@ -123,12 +123,28 @@ std::string ResponseFormatter::rplNotice(const User* from,
   return formatMessage(formatUserPrefix(from), "NOTICE", params);
 }
 
+std::string ResponseFormatter::rplNoTopic(const std::string& channel) {
+  std::vector<std::string> params;
+  params.push_back(channel);
+  params.push_back("No topic is set");
+  return formatMessage("ft_irc", "331", params);
+}
+
 std::string ResponseFormatter::rplTopic(const std::string& channel,
                                         const std::string& topic) {
   std::vector<std::string> params;
   params.push_back(channel);
   params.push_back(topic);
   return formatMessage("ft_irc", "332", params);
+}
+
+std::string ResponseFormatter::rplTopicChange(const User* user,
+                                              const std::string& channel,
+                                              const std::string& topic) {
+  std::vector<std::string> params;
+  params.push_back(channel);
+  params.push_back(topic);
+  return formatMessage(formatUserPrefix(user), "TOPIC", params);
 }
 
 std::string ResponseFormatter::rplKick(const User* kicker,
