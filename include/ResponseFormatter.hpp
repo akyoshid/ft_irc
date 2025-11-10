@@ -47,6 +47,8 @@ class ResponseFormatter {
   static std::string errErroneusNickname(const std::string& nickname);
   static std::string errNicknameInUse(const std::string& nickname);
   static std::string errNotOnChannel(const std::string& channel);
+  static std::string errUserNotInChannel(const std::string& user,
+                                         const std::string& channel);
   static std::string errUserOnChannel(const std::string& user,
                                       const std::string& channel);
   static std::string errNeedMoreParams(const std::string& command);

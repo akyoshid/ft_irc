@@ -470,13 +470,78 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleKick(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "KICK command received (stub) from: " + user->getNickname());
+  // Check if user is registered
+  if (!user->isRegistered()) {
+    return;  // Silently ignore commands from unregistered users
+  }
+
+  // KICK <channel> <user> [:<reason>]
   if (cmd.params.size() < 2) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("KICK"));
     return;
   }
-  // TODO(Phase 5): Implement kick functionality
+
+  const std::string& channel = cmd.params[0];
+  const std::string& targetNick = cmd.params[1];
+  std::string reason = "Kicked";
+  if (cmd.params.size() >= 3) {
+    reason = cmd.params[2];
+  }
+
+  // Check if channel exists
+  Channel* chan = channelManager_->getChannel(channel);
+  if (!chan) {
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    return;
+  }
+
+  // Check if kicker is on the channel
+  if (!chan->isMember(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    return;
+  }
+
+  // Check if kicker is an operator
+  if (!chan->isOperator(user->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    return;
+  }
+
+  // Check if target user exists
+  User* targetUser = userManager_->getUserByNickname(targetNick);
+  if (!targetUser) {
+    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    return;
+  }
+
+  // Check if target is on the channel
+  if (!chan->isMember(targetUser->getSocketFd())) {
+    sendResponse(user, ResponseFormatter::errUserNotInChannel(targetNick, channel));
+    return;
+  }
+
+  // Broadcast KICK message to all channel members
+  std::string kickMsg = ResponseFormatter::rplKick(user, channel, targetNick, reason);
+  const std::set<int>& members = chan->getMembers();
+  for (std::set<int>::const_iterator it = members.begin();
+       it != members.end(); ++it) {
+    User* member = userManager_->getUserByFd(*it);
+    if (member) {
+      sendResponse(member, kickMsg);
+    }
+  }
+
+  // Remove target from channel
+  chan->removeMember(targetUser->getSocketFd());
+  targetUser->leaveChannel(channel);
+
+  // If channel is empty, remove it
+  if (chan->getMemberCount() == 0) {
+    channelManager_->removeChannel(channel);
+  }
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      user->getNickname() + " kicked " + targetNick + " from " + channel);
 }
 
 void CommandRouter::handleInvite(User* user, const Command& cmd) {

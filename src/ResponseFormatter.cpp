@@ -212,6 +212,15 @@ std::string ResponseFormatter::errNotOnChannel(const std::string& channel) {
   return formatMessage("ft_irc", "442", params);
 }
 
+std::string ResponseFormatter::errUserNotInChannel(const std::string& user,
+                                                    const std::string& channel) {
+  std::vector<std::string> params;
+  params.push_back(user);
+  params.push_back(channel);
+  params.push_back("They aren't on that channel");
+  return formatMessage("ft_irc", "441", params);
+}
+
 std::string ResponseFormatter::errUserOnChannel(const std::string& user,
                                                 const std::string& channel) {
   std::vector<std::string> params;
