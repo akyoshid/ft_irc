@@ -41,6 +41,11 @@ class ResponseFormatter {
                                const std::string& channel);
   static std::string rplInviting(const std::string& channel,
                                  const std::string& nickname);
+  static std::string rplChannelModeIs(const std::string& channel,
+                                      const std::string& modes);
+  static std::string rplModeChange(const User* user, const std::string& channel,
+                                   const std::string& modes,
+                                   const std::string& args);
   static std::string rplQuit(const User* user, const std::string& reason);
 
   // ==========================================
@@ -65,6 +70,7 @@ class ResponseFormatter {
   static std::string errInviteOnlyChan(const std::string& channel);
   static std::string errBadChannelKey(const std::string& channel);
   static std::string errChanOPrivsNeeded(const std::string& channel);
+  static std::string errUnknownMode(char mode);
 
  private:
   // Helper: Format IRC message with prefix, command, and parameters

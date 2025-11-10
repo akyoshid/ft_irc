@@ -177,6 +177,27 @@ std::string ResponseFormatter::rplInviting(const std::string& channel,
   return formatMessage("ft_irc", "341", params);
 }
 
+std::string ResponseFormatter::rplChannelModeIs(const std::string& channel,
+                                                const std::string& modes) {
+  std::vector<std::string> params;
+  params.push_back(channel);
+  params.push_back(modes);
+  return formatMessage("ft_irc", "324", params);
+}
+
+std::string ResponseFormatter::rplModeChange(const User* user,
+                                             const std::string& channel,
+                                             const std::string& modes,
+                                             const std::string& args) {
+  std::vector<std::string> params;
+  params.push_back(channel);
+  params.push_back(modes);
+  if (!args.empty()) {
+    params.push_back(args);
+  }
+  return formatMessage(formatUserPrefix(user), "MODE", params);
+}
+
 std::string ResponseFormatter::rplQuit(const User* user,
                                        const std::string& reason) {
   std::vector<std::string> params;
@@ -308,4 +329,12 @@ std::string ResponseFormatter::errChanOPrivsNeeded(const std::string& channel) {
   params.push_back(channel);
   params.push_back("You're not channel operator");
   return formatMessage("ft_irc", "482", params);
+}
+
+std::string ResponseFormatter::errUnknownMode(char mode) {
+  std::vector<std::string> params;
+  std::string modeStr(1, mode);
+  params.push_back(modeStr);
+  params.push_back("is unknown mode char to me");
+  return formatMessage("ft_irc", "472", params);
 }
