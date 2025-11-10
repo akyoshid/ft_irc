@@ -188,23 +188,89 @@ void CommandRouter::handlePass(User* user, const Command& cmd) {
 }
 
 void CommandRouter::handleNick(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "NICK command received (stub) from: " + user->getIp());
+  // Check parameter count
   if (cmd.params.empty()) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("NICK"));
     return;
   }
-  // TODO(Phase 3): Implement nickname setting with duplicate check
+
+  const std::string& newNick = cmd.params[0];
+
+  // Validate nickname format
+  if (!isValidNickname(newNick)) {
+    sendResponse(user, ResponseFormatter::errErroneusNickname(newNick));
+    return;
+  }
+
+  // Check if nickname is already in use by another user
+  if (userManager_->isNicknameInUse(newNick)) {
+    sendResponse(user, ResponseFormatter::errNicknameInUse(newNick));
+    return;
+  }
+
+  // Update nickname
+  std::string oldNick = user->getNickname();
+  userManager_->updateNickname(user, oldNick, newNick);
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      "Nickname set: " + user->getIp() + " -> " + newNick);
+
+  // Check if registration is complete (authenticated + nickname + user info)
+  if (!user->isRegistered() && user->isAuthenticated() &&
+      !user->getUsername().empty()) {
+    // Complete registration
+    user->setRegistered(true);
+
+    // Send welcome messages (001-004)
+    sendResponse(user, ResponseFormatter::rplWelcome(user));
+    sendResponse(user, ResponseFormatter::rplYourHost(user));
+    sendResponse(user, ResponseFormatter::rplCreated(user));
+    sendResponse(user, ResponseFormatter::rplMyInfo(user));
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        "Registration complete: " + user->getNickname() + "!" +
+            user->getUsername() + "@" + user->getIp());
+  }
 }
 
 void CommandRouter::handleUser(User* user, const Command& cmd) {
-  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
-      "USER command received (stub) from: " + user->getIp());
+  // Check if user is already registered
+  if (user->isRegistered()) {
+    sendResponse(user, ResponseFormatter::errAlreadyRegistered());
+    return;
+  }
+
+  // Check parameter count (username, hostname, servername, realname)
   if (cmd.params.size() < 4) {
     sendResponse(user, ResponseFormatter::errNeedMoreParams("USER"));
     return;
   }
-  // TODO(Phase 3): Implement user registration
+
+  // Set user information
+  const std::string& username = cmd.params[0];
+  const std::string& realname = cmd.params[3];
+
+  user->setUsername(username);
+  user->setRealname(realname);
+
+  log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+      "User info set: " + user->getIp() + " (username: " + username + ")");
+
+  // Check if registration is complete (authenticated + nickname + user info)
+  if (user->isAuthenticated() && !user->getNickname().empty()) {
+    // Complete registration
+    user->setRegistered(true);
+
+    // Send welcome messages (001-004)
+    sendResponse(user, ResponseFormatter::rplWelcome(user));
+    sendResponse(user, ResponseFormatter::rplYourHost(user));
+    sendResponse(user, ResponseFormatter::rplCreated(user));
+    sendResponse(user, ResponseFormatter::rplMyInfo(user));
+
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND,
+        "Registration complete: " + user->getNickname() + "!" +
+            user->getUsername() + "@" + user->getIp());
+  }
 }
 
 void CommandRouter::handleJoin(User* user, const Command& cmd) {
