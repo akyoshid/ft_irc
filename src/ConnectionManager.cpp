@@ -123,24 +123,37 @@ SendResult ConnectionManager::sendData(User* user) {
     return SEND_COMPLETE;
   }
 
+  size_t totalSent = 0;
+
   while (!writeBuf.empty()) {
     ssize_t bytesSent = send(user->getSocketFd(), writeBuf.c_str(),
                              writeBuf.size(), MSG_NOSIGNAL);
     if (bytesSent > 0) {
-      // Remove the successfully sent data from the buffer
       writeBuf.erase(0, bytesSent);
+      totalSent += bytesSent;
     } else if (bytesSent < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        // Send buffer is full (retry later)
+        // Explicitly log when the send buffer is full
+        if (totalSent == 0) {
+          log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
+              "Send buffer full for " + user->getIp() +
+                  " (queued: " + int_to_string(writeBuf.size()) + " bytes)");
+        } else {
+          log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
+              "Partial send for " + user->getIp() +
+                  " (sent: " + int_to_string(totalSent) +
+                  ", remaining: " + int_to_string(writeBuf.size()) + " bytes)");
+        }
         return SEND_SUCCESS;
       }
-      // send() failed
       log(LOG_LEVEL_ERROR, LOG_CATEGORY_SYSTEM,
           createErrorMessage("send", errno));
       return SEND_ERROR;
     }
   }
 
-  // All data sent
+  // All data transmission complete
+  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
+      "Sent " + int_to_string(totalSent) + " bytes to " + user->getIp());
   return SEND_COMPLETE;
 }

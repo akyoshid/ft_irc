@@ -20,24 +20,26 @@ CommandRouter::~CommandRouter() { delete parser_; }
 // Main entry point
 // ==========================================
 
-void CommandRouter::processMessage(User* user, const std::string& message) {
+CommandResult CommandRouter::processMessage(User* user,
+                                            const std::string& message) {
   if (!user) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "processMessage called with NULL user");
-    return;
+    return CMD_CONTINUE;
   }
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_COMMAND, user->getIp() + ": " + message);
 
   try {
     Command cmd = parser_->parseCommand(message);
-    dispatch(user, cmd);
+    return dispatch(user, cmd);
   } catch (const std::exception& e) {
     // Log detailed error internally
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Failed to parse command from " + user->getIp() + ": " + e.what());
     // Send sanitized error response to client (don't expose internal details)
     sendResponse(user, "ERROR :Invalid message format\r\n");
+    return CMD_CONTINUE;
   }
 }
 
@@ -45,7 +47,7 @@ void CommandRouter::processMessage(User* user, const std::string& message) {
 // Dispatcher
 // ==========================================
 
-void CommandRouter::dispatch(User* user, const Command& cmd) {
+CommandResult CommandRouter::dispatch(User* user, const Command& cmd) {
   if (cmd.command == "CAP") {
     handleCap(user, cmd);
   } else if (cmd.command == "PASS") {
@@ -74,11 +76,13 @@ void CommandRouter::dispatch(User* user, const Command& cmd) {
     handleMode(user, cmd);
   } else if (cmd.command == "QUIT") {
     handleQuit(user, cmd);
+    return CMD_DISCONNECT;
   } else {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Unknown command: " + cmd.command);
     sendResponse(user, ResponseFormatter::errUnknownCommand(cmd.command));
   }
+  return CMD_CONTINUE;
 }
 
 // ==========================================
@@ -400,9 +404,11 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     // TODO(Phase 5): Check no-external messages (+n) - handled by membership
     // check above
 
-    // Broadcast message to all channel members except sender
+    // log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+    //     "Broadcasting PRIVMSG to " + target);
     log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
-        "Broadcasting PRIVMSG to " + target);
+        "Queueing PRIVMSG to " + target + " members");
+    // Broadcast message to all channel members except sender
     std::string privmsgMsg =
         ResponseFormatter::rplPrivmsg(user, target, message);
     const std::set<int>& members = channel->getMembers();
@@ -777,6 +783,10 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
       "QUIT command received from: " + user->getNickname() + " (" + reason +
           ")");
 
+  // Send QUIT confirmation to the user
+  std::string quitMsg = ResponseFormatter::rplQuit(user, reason);
+  sendResponse(user, quitMsg);
+
   // Broadcast QUIT to all channels the user is in
   log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
       "Broadcasting QUIT from " + user->getNickname());
@@ -788,7 +798,6 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     if (!channel) continue;
 
     // Send QUIT message to all channel members except the quitting user
-    std::string quitMsg = ResponseFormatter::rplQuit(user, reason);
     const std::set<int>& members = channel->getMembers();
     for (std::set<int>::const_iterator mit = members.begin();
          mit != members.end(); ++mit) {
@@ -801,6 +810,7 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     }
 
     // Remove user from channel
+    user->leaveChannel(*it);
     channel->removeMember(user->getSocketFd());
     channel->removeOperator(user->getSocketFd());
 
