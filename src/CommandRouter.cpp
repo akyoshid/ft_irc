@@ -378,14 +378,16 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
   log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
       user->getNickname() + " left " + channelName);
 
-  // Auto-promote: if no operators left but channel has members, promote first member
+  // Auto-promote: if no operators left but channel has members, promote first
+  // member
   if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
     int newOpFd = *channel->getMembers().begin();
     channel->addOperator(newOpFd);
     User* newOp = userManager_->getUserByFd(newOpFd);
     if (newOp) {
       log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-          newOp->getNickname() + " auto-promoted to operator in " + channelName);
+          newOp->getNickname() + " auto-promoted to operator in " +
+              channelName);
     }
   }
 
@@ -561,7 +563,8 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
   chan->removeMember(targetUser->getSocketFd());
   targetUser->leaveChannel(channel);
 
-  // Auto-promote: if no operators left but channel has members, promote first member
+  // Auto-promote: if no operators left but channel has members, promote first
+  // member
   if (chan->getOperators().empty() && chan->getMemberCount() > 0) {
     int newOpFd = *chan->getMembers().begin();
     chan->addOperator(newOpFd);
@@ -885,7 +888,8 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     channel->removeMember(user->getSocketFd());
     channel->removeOperator(user->getSocketFd());
 
-    // Auto-promote: if no operators left but channel has members, promote first member
+    // Auto-promote: if no operators left but channel has members, promote first
+    // member
     if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
       int newOpFd = *channel->getMembers().begin();
       channel->addOperator(newOpFd);
