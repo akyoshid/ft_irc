@@ -133,7 +133,7 @@ SendResult ConnectionManager::sendData(User* user) {
       totalSent += bytesSent;
     } else if (bytesSent < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        // 送信バッファ満杯を明示的にログ
+        // Explicitly log when the send buffer is full
         if (totalSent == 0) {
           log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
               "Send buffer full for " + user->getIp() +
@@ -152,7 +152,7 @@ SendResult ConnectionManager::sendData(User* user) {
     }
   }
 
-  // 全データ送信完了
+  // All data transmission complete
   log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
       "Sent " + int_to_string(totalSent) + " bytes to " + user->getIp());
   return SEND_COMPLETE;
