@@ -169,10 +169,12 @@ std::string ResponseFormatter::rplInvite(const User* inviter,
   return formatMessage(formatUserPrefix(inviter), "INVITE", params);
 }
 
-std::string ResponseFormatter::rplInviting(const std::string& channel,
-                                           const std::string& nickname) {
+std::string ResponseFormatter::rplInviting(const std::string& inviter,
+                                           const std::string& invitee,
+                                           const std::string& channel) {
   std::vector<std::string> params;
-  params.push_back(nickname);
+  params.push_back(inviter);
+  params.push_back(invitee);
   params.push_back(channel);
   return formatMessage("ft_irc", "341", params);
 }

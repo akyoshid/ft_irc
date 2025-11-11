@@ -40,8 +40,9 @@ class ResponseFormatter {
                              const std::string& reason);
   static std::string rplInvite(const User* inviter, const std::string& invited,
                                const std::string& channel);
-  static std::string rplInviting(const std::string& channel,
-                                 const std::string& nickname);
+  static std::string rplInviting(const std::string& inviter,
+                                 const std::string& invitee,
+                                 const std::string& channel);
   static std::string rplChannelModeIs(const std::string& channel,
                                       const std::string& modes);
   static std::string rplModeChange(const User* user, const std::string& channel,
