@@ -587,7 +587,7 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 
   // Send confirmation to inviter (341 RPL_INVITING)
   sendResponse(user, ResponseFormatter::rplInviting(user->getNickname(),
-                                                     targetNick, channel));
+                                                    targetNick, channel));
 
   // Send INVITE message to target
   sendResponse(targetUser,
