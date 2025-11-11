@@ -221,7 +221,7 @@ std::string ResponseFormatter::errNoSuchNick(const std::string& target,
 }
 
 std::string ResponseFormatter::errNoSuchChannel(const std::string& target,
-                                                 const std::string& channel) {
+                                                const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -230,7 +230,7 @@ std::string ResponseFormatter::errNoSuchChannel(const std::string& target,
 }
 
 std::string ResponseFormatter::errCannotSendToChan(const std::string& target,
-                                                    const std::string& channel) {
+                                                   const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -239,7 +239,7 @@ std::string ResponseFormatter::errCannotSendToChan(const std::string& target,
 }
 
 std::string ResponseFormatter::errTooManyChannels(const std::string& target,
-                                                   const std::string& channel) {
+                                                  const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -248,7 +248,7 @@ std::string ResponseFormatter::errTooManyChannels(const std::string& target,
 }
 
 std::string ResponseFormatter::errUnknownCommand(const std::string& target,
-                                                  const std::string& command) {
+                                                 const std::string& command) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(command);
@@ -256,8 +256,8 @@ std::string ResponseFormatter::errUnknownCommand(const std::string& target,
   return formatMessage("ft_irc", "421", params);
 }
 
-std::string ResponseFormatter::errErroneusNickname(const std::string& target,
-                                                    const std::string& nickname) {
+std::string ResponseFormatter::errErroneusNickname(
+    const std::string& target, const std::string& nickname) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(nickname);
@@ -266,7 +266,7 @@ std::string ResponseFormatter::errErroneusNickname(const std::string& target,
 }
 
 std::string ResponseFormatter::errNicknameInUse(const std::string& target,
-                                                 const std::string& nickname) {
+                                                const std::string& nickname) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(nickname);
@@ -275,7 +275,7 @@ std::string ResponseFormatter::errNicknameInUse(const std::string& target,
 }
 
 std::string ResponseFormatter::errNotOnChannel(const std::string& target,
-                                                const std::string& channel) {
+                                               const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -284,8 +284,8 @@ std::string ResponseFormatter::errNotOnChannel(const std::string& target,
 }
 
 std::string ResponseFormatter::errUserNotInChannel(const std::string& target,
-                                                    const std::string& user,
-                                                    const std::string& channel) {
+                                                   const std::string& user,
+                                                   const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(user);
@@ -295,8 +295,8 @@ std::string ResponseFormatter::errUserNotInChannel(const std::string& target,
 }
 
 std::string ResponseFormatter::errUserOnChannel(const std::string& target,
-                                                 const std::string& user,
-                                                 const std::string& channel) {
+                                                const std::string& user,
+                                                const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(user);
@@ -306,7 +306,7 @@ std::string ResponseFormatter::errUserOnChannel(const std::string& target,
 }
 
 std::string ResponseFormatter::errNeedMoreParams(const std::string& target,
-                                                  const std::string& command) {
+                                                 const std::string& command) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(command);
@@ -329,7 +329,7 @@ std::string ResponseFormatter::errPasswdMismatch(const std::string& target) {
 }
 
 std::string ResponseFormatter::errChannelIsFull(const std::string& target,
-                                                 const std::string& channel) {
+                                                const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -338,7 +338,7 @@ std::string ResponseFormatter::errChannelIsFull(const std::string& target,
 }
 
 std::string ResponseFormatter::errInviteOnlyChan(const std::string& target,
-                                                  const std::string& channel) {
+                                                 const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -347,7 +347,7 @@ std::string ResponseFormatter::errInviteOnlyChan(const std::string& target,
 }
 
 std::string ResponseFormatter::errBadChannelKey(const std::string& target,
-                                                 const std::string& channel) {
+                                                const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -356,7 +356,7 @@ std::string ResponseFormatter::errBadChannelKey(const std::string& target,
 }
 
 std::string ResponseFormatter::errChanOPrivsNeeded(const std::string& target,
-                                                    const std::string& channel) {
+                                                   const std::string& channel) {
   std::vector<std::string> params;
   params.push_back(target);
   params.push_back(channel);
@@ -365,7 +365,7 @@ std::string ResponseFormatter::errChanOPrivsNeeded(const std::string& target,
 }
 
 std::string ResponseFormatter::errUnknownMode(const std::string& target,
-                                               char mode) {
+                                              char mode) {
   std::vector<std::string> params;
   params.push_back(target);
   std::string modeStr(1, mode);
