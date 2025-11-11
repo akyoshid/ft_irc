@@ -382,12 +382,15 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
   // member
   if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
     int newOpFd = *channel->getMembers().begin();
-    channel->addOperator(newOpFd);
-    User* newOp = userManager_->getUserByFd(newOpFd);
-    if (newOp) {
-      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-          newOp->getNickname() + " auto-promoted to operator in " +
-              channelName);
+    // Don't promote the user who is leaving
+    if (newOpFd != user->getSocketFd()) {
+      channel->addOperator(newOpFd);
+      User* newOp = userManager_->getUserByFd(newOpFd);
+      if (newOp) {
+        log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+            newOp->getNickname() + " auto-promoted to operator in " +
+                channelName);
+      }
     }
   }
 
@@ -880,11 +883,14 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     // member
     if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
       int newOpFd = *channel->getMembers().begin();
-      channel->addOperator(newOpFd);
-      User* newOp = userManager_->getUserByFd(newOpFd);
-      if (newOp) {
-        log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-            newOp->getNickname() + " auto-promoted to operator in " + *it);
+      // Don't promote the user who is quitting
+      if (newOpFd != user->getSocketFd()) {
+        channel->addOperator(newOpFd);
+        User* newOp = userManager_->getUserByFd(newOpFd);
+        if (newOp) {
+          log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+              newOp->getNickname() + " auto-promoted to operator in " + *it);
+        }
       }
     }
 
