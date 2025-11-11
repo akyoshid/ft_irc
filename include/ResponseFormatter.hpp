@@ -53,27 +53,43 @@ class ResponseFormatter {
   // ==========================================
   // Error responses (400-599)
   // ==========================================
-  static std::string errNoSuchNick(const std::string& nickname);
-  static std::string errNoSuchChannel(const std::string& channel);
-  static std::string errCannotSendToChan(const std::string& channel);
-  static std::string errTooManyChannels(const std::string& channel);
-  static std::string errUnknownCommand(const std::string& command);
-  static std::string errErroneusNickname(const std::string& nickname);
-  static std::string errNicknameInUse(const std::string& nickname);
-  static std::string errNotOnChannel(const std::string& channel);
-  static std::string errUserNotInChannel(const std::string& user,
-                                         const std::string& channel);
-  static std::string errUserOnChannel(const std::string& user,
+  static std::string errNoSuchNick(const std::string& target,
+                                   const std::string& nickname);
+  static std::string errNoSuchChannel(const std::string& target,
                                       const std::string& channel);
-  static std::string errNeedMoreParams(const std::string& command);
-  static std::string errAlreadyRegistered();
-  static std::string errPasswdMismatch();
-  static std::string errChannelIsFull(const std::string& channel);
-  static std::string errInviteOnlyChan(const std::string& channel);
-  static std::string errBadChannelKey(const std::string& channel);
-  static std::string errChanOPrivsNeeded(const std::string& channel);
-  static std::string errUnknownMode(char mode);
-  static std::string errInvalidModeParam(const std::string& channel, char mode,
+  static std::string errCannotSendToChan(const std::string& target,
+                                         const std::string& channel);
+  static std::string errTooManyChannels(const std::string& target,
+                                        const std::string& channel);
+  static std::string errUnknownCommand(const std::string& target,
+                                       const std::string& command);
+  static std::string errErroneusNickname(const std::string& target,
+                                         const std::string& nickname);
+  static std::string errNicknameInUse(const std::string& target,
+                                      const std::string& nickname);
+  static std::string errNotOnChannel(const std::string& target,
+                                     const std::string& channel);
+  static std::string errUserNotInChannel(const std::string& target,
+                                         const std::string& user,
+                                         const std::string& channel);
+  static std::string errUserOnChannel(const std::string& target,
+                                      const std::string& user,
+                                      const std::string& channel);
+  static std::string errNeedMoreParams(const std::string& target,
+                                       const std::string& command);
+  static std::string errAlreadyRegistered(const std::string& target);
+  static std::string errPasswdMismatch(const std::string& target);
+  static std::string errChannelIsFull(const std::string& target,
+                                      const std::string& channel);
+  static std::string errInviteOnlyChan(const std::string& target,
+                                       const std::string& channel);
+  static std::string errBadChannelKey(const std::string& target,
+                                      const std::string& channel);
+  static std::string errChanOPrivsNeeded(const std::string& target,
+                                         const std::string& channel);
+  static std::string errUnknownMode(const std::string& target, char mode);
+  static std::string errInvalidModeParam(const std::string& target,
+                                         const std::string& channel, char mode,
                                          const std::string& param,
                                          const std::string& description);
 
