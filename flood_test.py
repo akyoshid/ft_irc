@@ -4,18 +4,18 @@ import time
 import sys
 
 def send_command(sock, command):
-    """IRC コマンドを送信"""
+    """Send IRC command"""
     sock.send(f"{command}\r\n".encode('utf-8'))
 
 def flood_test(host, port, password, channel, count):
-    """IRC フラッドテスト - 大量メッセージ版"""
+    """IRC flood test - mass message version"""
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
         print(f"Connecting to {host}:{port}...")
         sock.connect((host, port))
         
-        # 認証
+        # Authentication
         print("Authenticating...")
         send_command(sock, f"PASS {password}")
         send_command(sock, "NICK flooder")
@@ -26,16 +26,16 @@ def flood_test(host, port, password, channel, count):
         send_command(sock, f"JOIN {channel}")
         time.sleep(1)
         
-        # 大量メッセージ送信
+        # Send mass messages
         print(f"Sending {count} messages...")
-        message = "X" * 80  # 80文字のメッセージ
+        message = "X" * 80  # 80-character message
         
         for i in range(1, count + 1):
             send_command(sock, f"PRIVMSG {channel} :Msg {i}: {message}")
             
             if i % 1000 == 0:
                 print(f"Sent {i}/{count} messages")
-                time.sleep(0.01)  # 少し待つ
+                time.sleep(0.01)  # Brief pause
         
         print("Flood complete, disconnecting...")
         send_command(sock, "QUIT :Flood test complete")
@@ -43,17 +43,25 @@ def flood_test(host, port, password, channel, count):
         
     except Exception as e:
         print(f"Error: {e}")
+        sys.exit(1)
     finally:
         sock.close()
 
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
-        print("Usage: python3 irc_flood.py <host> <port> <password> <count>")
+    if len(sys.argv) != 6:
+        print("Usage: python3 flood_test.py <host> <port> <password> <channel> <count>")
+        print("Example: python3 flood_test.py localhost 6667 password '#42tokyo' 10000")
         sys.exit(1)
     
     host = sys.argv[1]
     port = int(sys.argv[2])
     password = sys.argv[3]
-    count = int(sys.argv[4])
+    channel = sys.argv[4]
+    count = int(sys.argv[5])
     
-    flood_test(host, port, password, "#42tokyo", count)
+    # Validate channel name (warning only)
+    if not channel.startswith('#') and not channel.startswith('&'):
+        print(f"Warning: Channel name '{channel}' doesn't start with # or &")
+        sys.exit(1)
+    
+    flood_test(host, port, password, channel, count)
