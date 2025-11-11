@@ -404,9 +404,11 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     // TODO(Phase 5): Check no-external messages (+n) - handled by membership
     // check above
 
-    // Broadcast message to all channel members except sender
+    // log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
+    //     "Broadcasting PRIVMSG to " + target);
     log(LOG_LEVEL_DEBUG, LOG_CATEGORY_COMMAND,
-        "Broadcasting PRIVMSG to " + target);
+        "Queueing PRIVMSG to " + target + " members");
+    // Broadcast message to all channel members except sender
     std::string privmsgMsg =
         ResponseFormatter::rplPrivmsg(user, target, message);
     const std::set<int>& members = channel->getMembers();
