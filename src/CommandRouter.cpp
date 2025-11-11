@@ -563,18 +563,6 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
   chan->removeMember(targetUser->getSocketFd());
   targetUser->leaveChannel(channel);
 
-  // Auto-promote: if no operators left but channel has members, promote first
-  // member
-  if (chan->getOperators().empty() && chan->getMemberCount() > 0) {
-    int newOpFd = *chan->getMembers().begin();
-    chan->addOperator(newOpFd);
-    User* newOp = userManager_->getUserByFd(newOpFd);
-    if (newOp) {
-      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-          newOp->getNickname() + " auto-promoted to operator in " + channel);
-    }
-  }
-
   // If channel is empty, remove it
   if (chan->getMemberCount() == 0) {
     channelManager_->removeChannel(channel);
