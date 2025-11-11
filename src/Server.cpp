@@ -185,17 +185,29 @@ void Server::handleUserRead(User* user) {
 }
 
 void Server::handleUserWrite(User* user) {
+  size_t bufferSize = user->getWriteBuffer().size();
+  if (bufferSize > 100000) {  // more than 100KB
+    log(LOG_LEVEL_WARNING, LOG_CATEGORY_NETWORK,
+        "Large write buffer for " + user->getIp() + ": " +
+            int_to_string(bufferSize) + " bytes");
+  }
+
   SendResult result = connManager_.sendData(user);
 
   if (result == SEND_ERROR) {
+    log(LOG_LEVEL_ERROR, LOG_CATEGORY_CONNECTION,
+        "Send error for " + user->getIp() + ", disconnecting");
     disconnectUser(user->getSocketFd());
     return;
   }
 
   // All data sent: remove EPOLLOUT
   if (result == SEND_COMPLETE) {
+    log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK,
+        "All queued data sent to " + user->getIp());
     eventLoop_.modifyFd(user->getSocketFd(), EPOLLIN);
   }
+  // If SEND_SUCCESS, keep EPOLLOUT (retry next time)
 }
 
 void Server::disconnectUser(int fd) {
