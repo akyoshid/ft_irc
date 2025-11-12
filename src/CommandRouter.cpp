@@ -693,9 +693,11 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   if (cmd.params.size() == 1) {
     const std::string& currentTopic = chan->getTopic();
     if (currentTopic.empty()) {
-      sendResponse(user, ResponseFormatter::rplNoTopic(channel));
+      sendResponse(user,
+                   ResponseFormatter::rplNoTopic(user->getNickname(), channel));
     } else {
-      sendResponse(user, ResponseFormatter::rplTopic(channel, currentTopic));
+      sendResponse(user, ResponseFormatter::rplTopic(user->getNickname(),
+                                                      channel, currentTopic));
     }
     return;
   }
@@ -770,7 +772,7 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
   // If no mode string, return current modes
   if (cmd.params.size() == 1) {
     sendResponse(user, ResponseFormatter::rplChannelModeIs(
-                           channel, getCurrentModes(chan)));
+                           user->getNickname(), channel, getCurrentModes(chan)));
     return;
   }
 

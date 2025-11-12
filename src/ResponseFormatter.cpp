@@ -123,16 +123,20 @@ std::string ResponseFormatter::rplNotice(const User* from,
   return formatMessage(formatUserPrefix(from), "NOTICE", params);
 }
 
-std::string ResponseFormatter::rplNoTopic(const std::string& channel) {
+std::string ResponseFormatter::rplNoTopic(const std::string& target,
+                                          const std::string& channel) {
   std::vector<std::string> params;
+  params.push_back(target);
   params.push_back(channel);
   params.push_back("No topic is set");
   return formatMessage("ft_irc", "331", params);
 }
 
-std::string ResponseFormatter::rplTopic(const std::string& channel,
+std::string ResponseFormatter::rplTopic(const std::string& target,
+                                        const std::string& channel,
                                         const std::string& topic) {
   std::vector<std::string> params;
+  params.push_back(target);
   params.push_back(channel);
   params.push_back(topic);
   return formatMessage("ft_irc", "332", params);
@@ -179,9 +183,11 @@ std::string ResponseFormatter::rplInviting(const std::string& inviter,
   return formatMessage("ft_irc", "341", params);
 }
 
-std::string ResponseFormatter::rplChannelModeIs(const std::string& channel,
+std::string ResponseFormatter::rplChannelModeIs(const std::string& target,
+                                                const std::string& channel,
                                                 const std::string& modes) {
   std::vector<std::string> params;
+  params.push_back(target);
   params.push_back(channel);
   params.push_back(modes);
   return formatMessage("ft_irc", "324", params);

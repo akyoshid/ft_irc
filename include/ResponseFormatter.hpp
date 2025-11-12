@@ -29,8 +29,10 @@ class ResponseFormatter {
                                 const std::string& message);
   static std::string rplNotice(const User* from, const std::string& target,
                                const std::string& message);
-  static std::string rplNoTopic(const std::string& channel);
-  static std::string rplTopic(const std::string& channel,
+  static std::string rplNoTopic(const std::string& target,
+                                const std::string& channel);
+  static std::string rplTopic(const std::string& target,
+                              const std::string& channel,
                               const std::string& topic);
   static std::string rplTopicChange(const User* user,
                                     const std::string& channel,
@@ -43,7 +45,8 @@ class ResponseFormatter {
   static std::string rplInviting(const std::string& inviter,
                                  const std::string& invitee,
                                  const std::string& channel);
-  static std::string rplChannelModeIs(const std::string& channel,
+  static std::string rplChannelModeIs(const std::string& target,
+                                      const std::string& channel,
                                       const std::string& modes);
   static std::string rplModeChange(const User* user, const std::string& channel,
                                    const std::string& modes,
