@@ -80,7 +80,8 @@ CommandResult CommandRouter::dispatch(User* user, const Command& cmd) {
   } else {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Unknown command: " + cmd.command);
-    sendResponse(user, ResponseFormatter::errUnknownCommand(cmd.command));
+    sendResponse(user, ResponseFormatter::errUnknownCommand(user->getNickname(),
+                                                            cmd.command));
   }
   return CMD_CONTINUE;
 }
@@ -94,13 +95,18 @@ void CommandRouter::handlePass(User* user, const Command& cmd) {
       "PASS command from " + user->getIp() + " (password hidden for security)");
   // Check if user is already registered
   if (user->isRegistered()) {
-    sendResponse(user, ResponseFormatter::errAlreadyRegistered());
+    sendResponse(user,
+                 ResponseFormatter::errAlreadyRegistered(
+                     user->getNickname().empty() ? "*" : user->getNickname()));
     return;
   }
 
   // Check parameter count
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("PASS"));
+    sendResponse(
+        user,
+        ResponseFormatter::errNeedMoreParams(
+            user->getNickname().empty() ? "*" : user->getNickname(), "PASS"));
     return;
   }
 
@@ -114,7 +120,9 @@ void CommandRouter::handlePass(User* user, const Command& cmd) {
   if (cmd.params[0] != password_) {
     log(LOG_LEVEL_WARNING, LOG_CATEGORY_COMMAND,
         "Authentication failed for " + user->getIp() + ": incorrect password");
-    sendResponse(user, ResponseFormatter::errPasswdMismatch());
+    sendResponse(user,
+                 ResponseFormatter::errPasswdMismatch(
+                     user->getNickname().empty() ? "*" : user->getNickname()));
     return;
   }
 
@@ -130,7 +138,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
       "NICK command from " + user->getIp() + " params: [" + params + "]");
   // Check parameter count
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("NICK"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "NICK"));
     return;
   }
 
@@ -138,7 +147,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
 
   // Validate nickname format
   if (!isValidNickname(newNick)) {
-    sendResponse(user, ResponseFormatter::errErroneusNickname(newNick));
+    sendResponse(user, ResponseFormatter::errErroneusNickname(
+                           user->getNickname(), newNick));
     return;
   }
 
@@ -148,7 +158,8 @@ void CommandRouter::handleNick(User* user, const Command& cmd) {
   // NOTE: This check-then-set pattern is safe in single-threaded context
   // Multi-threaded implementation would require atomic check-and-set
   if (userManager_->isNicknameInUse(newNick)) {
-    sendResponse(user, ResponseFormatter::errNicknameInUse(newNick));
+    sendResponse(user, ResponseFormatter::errNicknameInUse(user->getNickname(),
+                                                           newNick));
     return;
   }
 
@@ -176,13 +187,18 @@ void CommandRouter::handleUser(User* user, const Command& cmd) {
       "USER command from " + user->getIp() + " params: [" + params + "]");
   // Check if user is already registered
   if (user->isRegistered()) {
-    sendResponse(user, ResponseFormatter::errAlreadyRegistered());
+    sendResponse(user,
+                 ResponseFormatter::errAlreadyRegistered(
+                     user->getNickname().empty() ? "*" : user->getNickname()));
     return;
   }
 
   // Check parameter count (username, hostname, servername, realname)
   if (cmd.params.size() < 4) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("USER"));
+    sendResponse(
+        user,
+        ResponseFormatter::errNeedMoreParams(
+            user->getNickname().empty() ? "*" : user->getNickname(), "USER"));
     return;
   }
 
@@ -217,7 +233,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
 
   // Check parameter count
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("JOIN"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "JOIN"));
     return;
   }
 
@@ -227,7 +244,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
   // NOTE: Channel names are case-insensitive per RFC1459
   // ChannelManager normalizes names internally
   if (!isValidChannelName(channelName)) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channelName));
     return;
   }
 
@@ -253,13 +271,15 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
 
   // Check channel modes
   if (channel->isInviteOnly() && !channel->isInvited(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errInviteOnlyChan(channelName));
+    sendResponse(user, ResponseFormatter::errInviteOnlyChan(user->getNickname(),
+                                                            channelName));
     return;
   }
 
   if (channel->hasUserLimit() &&
       channel->getMemberCount() >= channel->getUserLimit()) {
-    sendResponse(user, ResponseFormatter::errChannelIsFull(channelName));
+    sendResponse(user, ResponseFormatter::errChannelIsFull(user->getNickname(),
+                                                           channelName));
     return;
   }
 
@@ -267,7 +287,8 @@ void CommandRouter::handleJoin(User* user, const Command& cmd) {
   if (!channel->getKey().empty()) {
     std::string providedKey = cmd.params.size() > 1 ? cmd.params[1] : "";
     if (providedKey != channel->getKey()) {
-      sendResponse(user, ResponseFormatter::errBadChannelKey(channelName));
+      sendResponse(user, ResponseFormatter::errBadChannelKey(
+                             user->getNickname(), channelName));
       return;
     }
   }
@@ -313,7 +334,8 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
 
   // Check parameter count
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("PART"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "PART"));
     return;
   }
 
@@ -323,13 +345,15 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
   // Get channel
   Channel* channel = channelManager_->getChannel(channelName);
   if (!channel) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channelName));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channelName));
     return;
   }
 
   // Check if user is in channel
   if (!channel->isMember(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errNotOnChannel(channelName));
+    sendResponse(user, ResponseFormatter::errNotOnChannel(user->getNickname(),
+                                                          channelName));
     return;
   }
 
@@ -353,6 +377,20 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
 
   log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
       user->getNickname() + " left " + channelName);
+
+  // Auto-promote: if no operators left but channel has members, promote first
+  // member. Note: user is already removed from members at this point, so
+  // begin() points to the first remaining member.
+  if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
+    int newOpFd = *channel->getMembers().begin();
+    channel->addOperator(newOpFd);
+    User* newOp = userManager_->getUserByFd(newOpFd);
+    if (newOp) {
+      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+          newOp->getNickname() + " auto-promoted to operator in " +
+              channelName);
+    }
+  }
 
   // Remove channel if empty
   if (channel->getMemberCount() == 0) {
@@ -378,7 +416,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
 
   // Check parameter count
   if (cmd.params.size() < 2) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("PRIVMSG"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "PRIVMSG"));
     return;
   }
 
@@ -390,13 +429,15 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     // Channel message
     Channel* channel = channelManager_->getChannel(target);
     if (!channel) {
-      sendResponse(user, ResponseFormatter::errNoSuchChannel(target));
+      sendResponse(user, ResponseFormatter::errNoSuchChannel(
+                             user->getNickname(), target));
       return;
     }
 
     // Check if user is in channel
     if (!channel->isMember(user->getSocketFd())) {
-      sendResponse(user, ResponseFormatter::errCannotSendToChan(target));
+      sendResponse(user, ResponseFormatter::errCannotSendToChan(
+                             user->getNickname(), target));
       return;
     }
 
@@ -428,7 +469,8 @@ void CommandRouter::handlePrivmsg(User* user, const Command& cmd) {
     // Private message to user
     User* targetUser = userManager_->getUserByNickname(target);
     if (!targetUser) {
-      sendResponse(user, ResponseFormatter::errNoSuchNick(target));
+      sendResponse(
+          user, ResponseFormatter::errNoSuchNick(user->getNickname(), target));
       return;
     }
 
@@ -456,7 +498,8 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
 
   // KICK <channel> <user> [:<reason>]
   if (cmd.params.size() < 2) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("KICK"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "KICK"));
     return;
   }
 
@@ -470,33 +513,37 @@ void CommandRouter::handleKick(User* user, const Command& cmd) {
   // Check if channel exists
   Channel* chan = channelManager_->getChannel(channel);
   if (!chan) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channel));
     return;
   }
 
   // Check if kicker is on the channel
   if (!chan->isMember(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    sendResponse(
+        user, ResponseFormatter::errNotOnChannel(user->getNickname(), channel));
     return;
   }
 
   // Check if kicker is an operator
   if (!chan->isOperator(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(
+                           user->getNickname(), channel));
     return;
   }
 
   // Check if target user exists
   User* targetUser = userManager_->getUserByNickname(targetNick);
   if (!targetUser) {
-    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    sendResponse(user, ResponseFormatter::errNoSuchNick(user->getNickname(),
+                                                        targetNick));
     return;
   }
 
   // Check if target is on the channel
   if (!chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(user,
-                 ResponseFormatter::errUserNotInChannel(targetNick, channel));
+    sendResponse(user, ResponseFormatter::errUserNotInChannel(
+                           user->getNickname(), targetNick, channel));
     return;
   }
 
@@ -542,7 +589,8 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
 
   // INVITE <nickname> <channel>
   if (cmd.params.size() < 2) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("INVITE"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "INVITE"));
     return;
   }
 
@@ -552,33 +600,37 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
   // Check if target user exists
   User* targetUser = userManager_->getUserByNickname(targetNick);
   if (!targetUser) {
-    sendResponse(user, ResponseFormatter::errNoSuchNick(targetNick));
+    sendResponse(user, ResponseFormatter::errNoSuchNick(user->getNickname(),
+                                                        targetNick));
     return;
   }
 
   // Check if channel exists
   Channel* chan = channelManager_->getChannel(channel);
   if (!chan) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channel));
     return;
   }
 
   // Check if inviter is on the channel
   if (!chan->isMember(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    sendResponse(
+        user, ResponseFormatter::errNotOnChannel(user->getNickname(), channel));
     return;
   }
 
   // Check if target is already on the channel
   if (chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(user,
-                 ResponseFormatter::errUserOnChannel(targetNick, channel));
+    sendResponse(user, ResponseFormatter::errUserOnChannel(
+                           user->getNickname(), targetNick, channel));
     return;
   }
 
   // If channel is invite-only, only operators can invite
   if (chan->isInviteOnly() && !chan->isOperator(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(
+                           user->getNickname(), channel));
     return;
   }
 
@@ -586,7 +638,8 @@ void CommandRouter::handleInvite(User* user, const Command& cmd) {
   chan->addInvite(targetUser->getSocketFd());
 
   // Send confirmation to inviter (341 RPL_INVITING)
-  sendResponse(user, ResponseFormatter::rplInviting(channel, targetNick));
+  sendResponse(user, ResponseFormatter::rplInviting(user->getNickname(),
+                                                    targetNick, channel));
 
   // Send INVITE message to target
   sendResponse(targetUser,
@@ -612,7 +665,8 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
 
   // TOPIC <channel> [:<topic>]
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("TOPIC"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "TOPIC"));
     return;
   }
 
@@ -621,13 +675,15 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   // Check if channel exists
   Channel* chan = channelManager_->getChannel(channel);
   if (!chan) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channel));
     return;
   }
 
   // Check if user is on the channel
   if (!chan->isMember(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    sendResponse(
+        user, ResponseFormatter::errNotOnChannel(user->getNickname(), channel));
     return;
   }
 
@@ -635,16 +691,19 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
   if (cmd.params.size() == 1) {
     const std::string& currentTopic = chan->getTopic();
     if (currentTopic.empty()) {
-      sendResponse(user, ResponseFormatter::rplNoTopic(channel));
+      sendResponse(user,
+                   ResponseFormatter::rplNoTopic(user->getNickname(), channel));
     } else {
-      sendResponse(user, ResponseFormatter::rplTopic(channel, currentTopic));
+      sendResponse(user, ResponseFormatter::rplTopic(user->getNickname(),
+                                                     channel, currentTopic));
     }
     return;
   }
 
   // Setting topic - check permissions
   if (chan->isTopicRestricted() && !chan->isOperator(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(
+                           user->getNickname(), channel));
     return;
   }
 
@@ -686,7 +745,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // MODE <channel> [<modestring> [<mode arguments>...]]
   if (cmd.params.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("MODE"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "MODE"));
     return;
   }
 
@@ -695,26 +755,30 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
   // Check if channel exists
   Channel* chan = channelManager_->getChannel(channel);
   if (!chan) {
-    sendResponse(user, ResponseFormatter::errNoSuchChannel(channel));
+    sendResponse(user, ResponseFormatter::errNoSuchChannel(user->getNickname(),
+                                                           channel));
     return;
   }
 
   // Check if user is on the channel
   if (!chan->isMember(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errNotOnChannel(channel));
+    sendResponse(
+        user, ResponseFormatter::errNotOnChannel(user->getNickname(), channel));
     return;
   }
 
   // If no mode string, return current modes
   if (cmd.params.size() == 1) {
-    sendResponse(user, ResponseFormatter::rplChannelModeIs(
-                           channel, getCurrentModes(chan)));
+    sendResponse(
+        user, ResponseFormatter::rplChannelModeIs(user->getNickname(), channel,
+                                                  getCurrentModes(chan)));
     return;
   }
 
   // Check if user is operator for mode changes
   if (!chan->isOperator(user->getSocketFd())) {
-    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(channel));
+    sendResponse(user, ResponseFormatter::errChanOPrivsNeeded(
+                           user->getNickname(), channel));
     return;
   }
 
@@ -723,7 +787,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // Validate mode string is not empty
   if (modeString.empty()) {
-    sendResponse(user, ResponseFormatter::errNeedMoreParams("MODE"));
+    sendResponse(user, ResponseFormatter::errNeedMoreParams(user->getNickname(),
+                                                            "MODE"));
     return;
   }
 
@@ -759,7 +824,8 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
       applyModeUserLimit(user, chan, adding, argIndex, cmd.params, appliedModes,
                          appliedArgs);
     } else {
-      sendResponse(user, ResponseFormatter::errUnknownMode(mode));
+      sendResponse(
+          user, ResponseFormatter::errUnknownMode(user->getNickname(), mode));
     }
   }
 
@@ -813,6 +879,19 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     user->leaveChannel(*it);
     channel->removeMember(user->getSocketFd());
     channel->removeOperator(user->getSocketFd());
+
+    // Auto-promote: if no operators left but channel has members, promote first
+    // member. Note: user is already removed from members at this point, so
+    // begin() points to the first remaining member.
+    if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
+      int newOpFd = *channel->getMembers().begin();
+      channel->addOperator(newOpFd);
+      User* newOp = userManager_->getUserByFd(newOpFd);
+      if (newOp) {
+        log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+            newOp->getNickname() + " auto-promoted to operator in " + *it);
+      }
+    }
 
     // Remove channel if empty
     if (channel->getMemberCount() == 0) {
@@ -926,8 +1005,8 @@ void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
       // Keys should not contain spaces, commas, or control characters
       if (key.empty()) {
         sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                 chan->getName(), 'k', key,
-                                 "Invalid key: empty parameter"));
+                                 sender->getNickname(), chan->getName(), 'k',
+                                 key, "Invalid key: empty parameter"));
         ++argIndex;
         return;
       }
@@ -937,9 +1016,10 @@ void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
         char c = key[i];
         // Disallow spaces, commas, and control characters (< 0x20 or == 0x7F)
         if (c == ' ' || c == ',' || c < 0x20 || c == 0x7F) {
-          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                   chan->getName(), 'k', key,
-                                   "Invalid key: contains invalid characters"));
+          sendResponse(sender,
+                       ResponseFormatter::errInvalidModeParam(
+                           sender->getNickname(), chan->getName(), 'k', key,
+                           "Invalid key: contains invalid characters"));
           ++argIndex;
           return;
         }
@@ -947,9 +1027,10 @@ void CommandRouter::applyModeKey(User* sender, Channel* chan, bool adding,
 
       // Enforce reasonable length limit (23 chars per RFC 1459)
       if (key.length() > 23) {
-        sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                 chan->getName(), 'k', key,
-                                 "Invalid key: too long (max 23 characters)"));
+        sendResponse(sender,
+                     ResponseFormatter::errInvalidModeParam(
+                         sender->getNickname(), chan->getName(), 'k', key,
+                         "Invalid key: too long (max 23 characters)"));
         ++argIndex;
         return;
       }
@@ -977,14 +1058,16 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
   User* targetUser = userManager_->getUserByNickname(targetNick);
 
   if (!targetUser) {
-    sendResponse(sender, ResponseFormatter::errNoSuchNick(targetNick));
+    sendResponse(sender, ResponseFormatter::errNoSuchNick(sender->getNickname(),
+                                                          targetNick));
     ++argIndex;
     return;
   }
 
   if (!chan->isMember(targetUser->getSocketFd())) {
-    sendResponse(sender, ResponseFormatter::errUserNotInChannel(
-                             targetNick, chan->getName()));
+    sendResponse(sender,
+                 ResponseFormatter::errUserNotInChannel(
+                     sender->getNickname(), targetNick, chan->getName()));
     ++argIndex;
     return;
   }
@@ -995,8 +1078,8 @@ void CommandRouter::applyModeOperator(User* sender, Channel* chan, bool adding,
     // Prevent last operator from removing their own operator status
     if (targetUser->getSocketFd() == sender->getSocketFd() &&
         chan->getOperators().size() == 1) {
-      sendResponse(sender,
-                   ResponseFormatter::errChanOPrivsNeeded(chan->getName()));
+      sendResponse(sender, ResponseFormatter::errChanOPrivsNeeded(
+                               sender->getNickname(), chan->getName()));
       ++argIndex;
       return;
     }
@@ -1020,16 +1103,16 @@ void CommandRouter::applyModeUserLimit(User* sender, Channel* chan, bool adding,
       // Validate: non-empty and reasonable length
       if (limitStr.empty()) {
         sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                 chan->getName(), 'l', limitStr,
-                                 "Invalid limit: empty parameter"));
+                                 sender->getNickname(), chan->getName(), 'l',
+                                 limitStr, "Invalid limit: empty parameter"));
         ++argIndex;
         return;
       }
 
       if (limitStr.length() > 10) {
         sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                 chan->getName(), 'l', limitStr,
-                                 "Invalid limit: too large"));
+                                 sender->getNickname(), chan->getName(), 'l',
+                                 limitStr, "Invalid limit: too large"));
         ++argIndex;
         return;
       }
@@ -1038,8 +1121,8 @@ void CommandRouter::applyModeUserLimit(User* sender, Channel* chan, bool adding,
       for (size_t j = 0; j < limitStr.length(); ++j) {
         if (limitStr[j] < '0' || limitStr[j] > '9') {
           sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                   chan->getName(), 'l', limitStr,
-                                   "Invalid limit: not a number"));
+                                   sender->getNickname(), chan->getName(), 'l',
+                                   limitStr, "Invalid limit: not a number"));
           ++argIndex;
           return;
         }
@@ -1053,9 +1136,10 @@ void CommandRouter::applyModeUserLimit(User* sender, Channel* chan, bool adding,
         size_t digit = limitStr[j] - '0';
         // Check for overflow before multiplication
         if (limit > (maxLimit - digit) / 10) {
-          sendResponse(sender, ResponseFormatter::errInvalidModeParam(
-                                   chan->getName(), 'l', limitStr,
-                                   "Invalid limit: number too large"));
+          sendResponse(
+              sender, ResponseFormatter::errInvalidModeParam(
+                          sender->getNickname(), chan->getName(), 'l', limitStr,
+                          "Invalid limit: number too large"));
           ++argIndex;
           return;
         }
