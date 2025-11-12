@@ -379,18 +379,16 @@ void CommandRouter::handlePart(User* user, const Command& cmd) {
       user->getNickname() + " left " + channelName);
 
   // Auto-promote: if no operators left but channel has members, promote first
-  // member
+  // member. Note: user is already removed from members at this point, so
+  // begin() points to the first remaining member.
   if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
     int newOpFd = *channel->getMembers().begin();
-    // Don't promote the user who is leaving
-    if (newOpFd != user->getSocketFd()) {
-      channel->addOperator(newOpFd);
-      User* newOp = userManager_->getUserByFd(newOpFd);
-      if (newOp) {
-        log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-            newOp->getNickname() + " auto-promoted to operator in " +
-                channelName);
-      }
+    channel->addOperator(newOpFd);
+    User* newOp = userManager_->getUserByFd(newOpFd);
+    if (newOp) {
+      log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+          newOp->getNickname() + " auto-promoted to operator in " +
+              channelName);
     }
   }
 
@@ -883,17 +881,15 @@ void CommandRouter::handleQuit(User* user, const Command& cmd) {
     channel->removeOperator(user->getSocketFd());
 
     // Auto-promote: if no operators left but channel has members, promote first
-    // member
+    // member. Note: user is already removed from members at this point, so
+    // begin() points to the first remaining member.
     if (channel->getOperators().empty() && channel->getMemberCount() > 0) {
       int newOpFd = *channel->getMembers().begin();
-      // Don't promote the user who is quitting
-      if (newOpFd != user->getSocketFd()) {
-        channel->addOperator(newOpFd);
-        User* newOp = userManager_->getUserByFd(newOpFd);
-        if (newOp) {
-          log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
-              newOp->getNickname() + " auto-promoted to operator in " + *it);
-        }
+      channel->addOperator(newOpFd);
+      User* newOp = userManager_->getUserByFd(newOpFd);
+      if (newOp) {
+        log(LOG_LEVEL_INFO, LOG_CATEGORY_CHANNEL,
+            newOp->getNickname() + " auto-promoted to operator in " + *it);
       }
     }
 
