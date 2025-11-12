@@ -697,7 +697,7 @@ void CommandRouter::handleTopic(User* user, const Command& cmd) {
                    ResponseFormatter::rplNoTopic(user->getNickname(), channel));
     } else {
       sendResponse(user, ResponseFormatter::rplTopic(user->getNickname(),
-                                                      channel, currentTopic));
+                                                     channel, currentTopic));
     }
     return;
   }
@@ -771,8 +771,9 @@ void CommandRouter::handleMode(User* user, const Command& cmd) {
 
   // If no mode string, return current modes
   if (cmd.params.size() == 1) {
-    sendResponse(user, ResponseFormatter::rplChannelModeIs(
-                           user->getNickname(), channel, getCurrentModes(chan)));
+    sendResponse(
+        user, ResponseFormatter::rplChannelModeIs(user->getNickname(), channel,
+                                                  getCurrentModes(chan)));
     return;
   }
 
