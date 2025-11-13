@@ -13,24 +13,26 @@ def test_partial_command(server_config):
     """
     Test server handling of partial commands.
 
-    Manual reproduction:
+    IRC Protocol: Commands are terminated with CRLF (\\r\\n). This test verifies
+    the server correctly handles incomplete commands that lack proper termination.
+
+    Manual reproduction (testing protocol edge case):
         Terminal 1:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        (Wait for 001)
-        JOIN #te
-        (Don't press Enter, keep connection open)
+        $ irssi
+        /connect localhost 6667 password testuser
+        (Wait for connection)
+        Type: /join #te
+        (Don't press Enter - this simulates a partial command without CRLF)
 
         Terminal 2:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser2
-        USER testuser2 0 * :Test User 2
-        (Server should respond normally with 001)
+        $ irssi
+        /connect localhost 6667 password testuser2
+        (Server should respond normally with RPL_WELCOME 001)
 
     Expected: Server handles partial commands gracefully without blocking other connections
+
+    Note: This tests protocol edge cases where commands are incomplete. Normal
+    irssi usage would complete the command, but this verifies server robustness.
     """
     # Client 1 sends partial command
     client1 = IRCClient(
@@ -83,21 +85,20 @@ def test_sudden_disconnect(authenticated_client, server_config):
 
     Manual reproduction:
         Terminal 1:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        JOIN #test
-        (Press Ctrl+C to kill nc)
+        $ irssi
+        /connect localhost 6667 password testuser
+        /join #test
+        (Press Ctrl+C or close terminal to simulate sudden disconnect)
 
         Terminal 2:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser2
-        USER testuser2 0 * :Test User 2
-        (Server should respond normally)
+        $ irssi
+        /connect localhost 6667 password testuser2
+        (Server should respond normally with RPL_WELCOME 001)
 
     Expected: Server remains operational after unexpected client disconnection
+
+    Note: This simulates network failures where clients disconnect without
+    sending QUIT command.
     """
     # First client joins channel
     authenticated_client.join("#test")
@@ -135,24 +136,25 @@ def test_partial_command_then_kill(server_config):
     """
     Test server handling when client is killed with half-sent command.
 
-    Manual reproduction:
+    IRC Protocol: This tests the edge case where a command is sent without
+    CRLF termination and the connection is abruptly closed.
+
+    Manual reproduction (testing protocol edge case):
         Terminal 1:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        (Wait for 001)
-        JOIN #te
-        (Don't press Enter, then press Ctrl+C)
+        $ irssi
+        /connect localhost 6667 password testuser
+        (Wait for RPL_WELCOME 001)
+        Type: /join #te
+        (Don't press Enter, then press Ctrl+C to force close)
 
         Terminal 2:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser2
-        USER testuser2 0 * :Test User 2
-        (Server should respond normally)
+        $ irssi
+        /connect localhost 6667 password testuser2
+        (Server should respond normally with RPL_WELCOME 001)
 
     Expected: Server not in odd state or blocked after client killed with partial command
+
+    Note: This simulates crash or force-close scenarios during command input.
     """
     client1 = IRCClient(
         host=server_config["host"],
@@ -201,31 +203,32 @@ def test_multiple_simultaneous_connections(server_config):
     """
     Test server can handle multiple simultaneous connections.
 
+    IRC Protocol: Tests concurrent connection handling and message routing
+    to multiple clients on the same channel.
+
     Manual reproduction:
         Terminal 1:
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #multi
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #multi
 
         Terminal 2:
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #multi
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #multi
 
         Terminal 3:
-        $ nc -C localhost 6667
-        PASS password
-        NICK user3
-        USER user3 0 * :User Three
-        JOIN #multi
+        $ irssi
+        /connect localhost 6667 password user3
+        /join #multi
 
-        (All should join successfully and receive messages from others)
+        (All should join successfully and receive JOIN messages from others)
 
     Expected: Server handles multiple connections without blocking
+
+    IRC Messages:
+        - JOIN #multi (sent by each client)
+        - :user1!~user1@host JOIN :#multi (broadcast to channel members)
     """
     clients = []
     try:
@@ -284,16 +287,21 @@ def test_buffer_overflow_protection(server_config):
     """
     Test server handling of very long commands.
 
+    IRC Protocol: RFC 1459 specifies messages must not exceed 512 characters
+    including CRLF. Servers should truncate or reject oversized messages.
+
     Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        (Wait for 001)
-        PRIVMSG #test :<very long message with 1000+ characters>
-        (Server should handle gracefully)
+        $ irssi
+        /connect localhost 6667 password testuser
+        (Wait for RPL_WELCOME 001)
+        /msg #test <paste very long message with 1000+ characters>
+        (Server should handle gracefully - may truncate or send ERR_INPUTTOOLONG)
 
     Expected: Server handles long commands without crashing or hanging
+
+    IRC Protocol Format:
+        PRIVMSG #test :message text
+        Maximum: 512 bytes including "\\r\\n"
     """
     client = IRCClient(
         host=server_config["host"],
@@ -333,14 +341,31 @@ def test_rapid_reconnection(server_config):
     """
     Test server handling of rapid connect/disconnect cycles.
 
+    IRC Protocol: Tests connection lifecycle management with rapid
+    authentication and disconnection sequences.
+
     Manual reproduction:
         $ for i in {1..10}; do
-            echo -e "PASS password\\r\\nNICK test$i\\r\\nUSER test$i 0 * :Test\\r\\nQUIT\\r\\n" | nc localhost 6667
-            sleep 0.1
+            irssi -c localhost -p 6667 -w password -n test$i --noconnect &
+            sleep 0.2
+            pkill -f "irssi.*test$i"
         done
         (Server should handle all connections)
 
+    Alternative:
+        In 10 terminals, rapidly:
+        $ irssi
+        /connect localhost 6667 password test1
+        /quit
+        (Repeat with test2, test3, etc.)
+
     Expected: Server handles rapid connect/disconnect without resource leaks
+
+    IRC Commands:
+        PASS password
+        NICK test1
+        USER test1 0 * :Test
+        QUIT :Leaving
     """
     for i in range(10):
         client = IRCClient(

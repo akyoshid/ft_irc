@@ -7,12 +7,14 @@ def test_join_channel(authenticated_client):
     """
     Test joining a channel.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        JOIN #test
+    IRC Protocol Format:
+        Client -> Server: JOIN #channel
+        Server -> Client: :nick!user@host JOIN :#channel
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /join #test
         (Server sends): :testuser!testuser@localhost JOIN :#test
 
     Expected: Server confirms JOIN and broadcasts to channel members
@@ -29,16 +31,20 @@ def test_join_multiple_channels(authenticated_client):
     """
     Test joining multiple channels.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        JOIN #test1
+    IRC Protocol Format:
+        Client -> Server: JOIN #channel1
+        Server -> Client: :nick!user@host JOIN :#channel1
+        Client -> Server: JOIN #channel2
+        Server -> Client: :nick!user@host JOIN :#channel2
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /join #test1
         (Server sends): :testuser!testuser@localhost JOIN :#test1
-        JOIN #test2
+        /join #test2
         (Server sends): :testuser!testuser@localhost JOIN :#test2
-        JOIN #test3
+        /join #test3
         (Server sends): :testuser!testuser@localhost JOIN :#test3
 
     Expected: Server confirms each JOIN separately
@@ -62,23 +68,24 @@ def test_join_channel_with_key(two_clients):
     """
     Test joining a channel with key (password).
 
-    Manual reproduction:
+    IRC Protocol Format:
+        Client -> Server: JOIN #channel key
+        Server -> Client: :nick!user@host JOIN :#channel (on success)
+        Server -> Client: :server 475 nick #channel :Cannot join channel (+k) (on error)
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #private
-        MODE #private +k secret123
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #private
+        /mode #private +k secret123
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #private
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #private
         (Server sends): :ft_irc 475 user2 #private :Cannot join channel (+k)
-        JOIN #private secret123
+        /join #private secret123
         (Server sends): :user2!user2@localhost JOIN :#private
 
     Expected: Server rejects JOIN without key (475), accepts with correct key
@@ -112,13 +119,15 @@ def test_part_channel(authenticated_client):
     """
     Test leaving a channel.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        JOIN #test
-        PART #test :Goodbye
+    IRC Protocol Format:
+        Client -> Server: PART #channel [reason]
+        Server -> Client: :nick!user@host PART #channel [reason]
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /join #test
+        /part #test Goodbye
         (Server sends): :testuser!testuser@localhost PART #test :Goodbye
 
     Expected: Server confirms PART and broadcasts to channel members
@@ -141,22 +150,22 @@ def test_topic_operations(two_clients):
     """
     Test setting and querying channel topic.
 
-    Manual reproduction:
+    IRC Protocol Format:
+        Client -> Server: TOPIC #channel :new topic text
+        Server -> Client: :nick!user@host TOPIC #channel :new topic text
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #topic-test
-        TOPIC #topic-test :Welcome to our IRC channel!
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #topic-test
+        /topic #topic-test Welcome to our IRC channel!
         (Server sends): :user1!user1@localhost TOPIC #topic-test :Welcome to our IRC channel!
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #topic-test
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #topic-test
         (Receives): :user1!user1@localhost TOPIC #topic-test :Welcome to our IRC channel!
 
     Expected: Server broadcasts TOPIC change to all channel members
@@ -188,22 +197,23 @@ def test_mode_invite_only(two_clients):
     """
     Test invite-only mode (+i).
 
-    Manual reproduction:
+    IRC Protocol Format:
+        Client -> Server: MODE #channel +i
+        Server -> Client: :nick!user@host MODE #channel +i
+        Server -> Client: :server 473 nick #channel :Cannot join channel (+i) (when JOIN fails)
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #invite-only
-        MODE #invite-only +i
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #invite-only
+        /mode #invite-only +i
         (Server sends): :user1!user1@localhost MODE #invite-only +i
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #invite-only
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #invite-only
         (Server sends): :ft_irc 473 user2 #invite-only :Cannot join channel (+i)
 
     Expected: Server rejects JOIN to invite-only channel without invite (ERR_INVITEONLYCHAN)
@@ -232,23 +242,24 @@ def test_mode_topic_restricted(two_clients):
     """
     Test topic-restricted mode (+t).
 
-    Manual reproduction:
+    IRC Protocol Format:
+        Client -> Server: MODE #channel +t
+        Server -> Client: :nick!user@host MODE #channel +t
+        Server -> Client: :server 482 nick #channel :You're not channel operator (when TOPIC fails)
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #restricted
-        MODE #restricted +t
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #restricted
+        /mode #restricted +t
         (Server sends): :user1!user1@localhost MODE #restricted +t
 
         Terminal 2 (user2 - regular user):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #restricted
-        TOPIC #restricted :New topic by non-op
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #restricted
+        /topic #restricted New topic by non-op
         (Server sends): :ft_irc 482 user2 #restricted :You're not channel operator
 
     Expected: Server rejects TOPIC from non-operators when +t is set (ERR_CHANOPRIVSNEEDED)
@@ -282,22 +293,23 @@ def test_mode_user_limit(two_clients):
     """
     Test user limit mode (+l).
 
-    Manual reproduction:
+    IRC Protocol Format:
+        Client -> Server: MODE #channel +l limit
+        Server -> Client: :nick!user@host MODE #channel +l limit
+        Server -> Client: :server 471 nick #channel :Cannot join channel (+l) (when JOIN fails)
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #limited
-        MODE #limited +l 1
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #limited
+        /mode #limited +l 1
         (Server sends): :user1!user1@localhost MODE #limited +l 1
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #limited
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #limited
         (Server sends): :ft_irc 471 user2 #limited :Cannot join channel (+l)
 
     Expected: Server rejects JOIN when user limit is reached (ERR_CHANNELISFULL)

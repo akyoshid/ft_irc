@@ -7,20 +7,20 @@ def test_privmsg_to_user(two_clients):
     """
     Test sending private message to another user.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <nickname> :<message>
+        Server relays: :<sender>!<user>@<host> PRIVMSG <target> :<message>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        PRIVMSG user2 :Hello user2!
+        $ irssi
+        /connect localhost 6667 password user1
+        /msg user2 Hello user2!
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        (Receives): :user1!user1@localhost PRIVMSG user2 :Hello user2!
+        $ irssi
+        /connect localhost 6667 password user2
+        (Receives private message from user1)
 
     Expected: Server delivers private message from user1 to user2
     """
@@ -45,22 +45,22 @@ def test_privmsg_to_channel(two_clients):
     """
     Test sending message to channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server broadcasts: :<sender>!<user>@<host> PRIVMSG <channel> :<message>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #chat
-        PRIVMSG #chat :Hello everyone in #chat!
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #chat
+        /msg #chat Hello everyone in #chat!
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #chat
-        (Receives): :user1!user1@localhost PRIVMSG #chat :Hello everyone in #chat!
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #chat
+        (Receives channel message from user1)
 
     Expected: Server broadcasts channel message to all members except sender
     """
@@ -92,13 +92,15 @@ def test_privmsg_to_nonexistent_user(authenticated_client):
     """
     Test sending message to non-existent user.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        PRIVMSG nonexistent :Hello?
-        (Server sends): :ft_irc 401 testuser nonexistent :No such nick/channel
+    IRC Protocol:
+        Client sends: PRIVMSG <nickname> :<message>
+        Server responds: 401 <client> <nickname> :No such nick/channel
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /msg nonexistent Hello?
+        (Server sends error: No such nick/channel)
 
     Expected: Server returns ERR_NOSUCHNICK (401)
     """
@@ -113,15 +115,18 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
     """
     Test sending message to channel not joined.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        PRIVMSG #notjoined :Hello?
-        (Server sends): :ft_irc 403 testuser #notjoined :No such channel
-                    OR: :ft_irc 404 testuser #notjoined :Cannot send to channel
-                    OR: :ft_irc 401 testuser #notjoined :No such nick/channel
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server responds with one of:
+            403 <client> <channel> :No such channel
+            404 <client> <channel> :Cannot send to channel
+            401 <client> <channel> :No such nick/channel
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /msg #notjoined Hello?
+        (Server sends error indicating channel doesn't exist or cannot send)
 
     Expected: Server returns an error indicating the channel doesn't exist or
               the user cannot send to it (403, 404, or 401)
@@ -143,23 +148,22 @@ def test_kick_user_from_channel(two_clients):
     """
     Test kicking a user from channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: KICK <channel> <nickname> :<reason>
+        Server broadcasts: :<operator>!<user>@<host> KICK <channel> <nickname> :<reason>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #kick-test
-        KICK #kick-test user2 :You have been kicked
-        (Server sends): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #kick-test
+        /kick user2 You have been kicked
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #kick-test
-        (Receives): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #kick-test
+        (Receives KICK notification and is removed from channel)
 
     Expected: Server broadcasts KICK to all channel members and removes kicked user
     """
@@ -191,22 +195,22 @@ def test_kick_without_operator_privilege(two_clients):
     """
     Test that non-operators cannot kick users.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: KICK <channel> <nickname> :<reason>
+        Server responds: 482 <client> <channel> :You're not channel operator
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #nokick
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #nokick
 
         Terminal 2 (user2 - regular user):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #nokick
-        KICK #nokick user1 :Trying to kick
-        (Server sends): :ft_irc 482 user2 #nokick :You're not channel operator
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #nokick
+        /kick user1 Trying to kick
+        (Server sends error: You're not channel operator)
 
     Expected: Server rejects KICK from non-operators (ERR_CHANOPRIVSNEEDED)
     """
@@ -235,25 +239,25 @@ def test_invite_user_to_channel(two_clients):
     """
     Test inviting a user to channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: INVITE <nickname> <channel>
+        Server confirms: 341 <client> <nickname> <channel>
+        Server notifies: :<inviter>!<user>@<host> INVITE <nickname> :<channel>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #invite-test
-        MODE #invite-test +i
-        INVITE user2 #invite-test
-        (Server sends): :ft_irc 341 user1 user2 #invite-test
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #invite-test
+        /mode #invite-test +i
+        /invite user2 #invite-test
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        (Receives): :user1!user1@localhost INVITE user2 :#invite-test
-        JOIN #invite-test
-        (Server sends): :user2!user2@localhost JOIN :#invite-test
+        $ irssi
+        /connect localhost 6667 password user2
+        (Receives INVITE notification from user1)
+        /join #invite-test
+        (Successfully joins the invite-only channel)
 
     Expected: Server sends INVITE notification and allows invited user to join
     """
@@ -290,23 +294,24 @@ def test_invite_without_operator_privilege(two_clients):
     """
     Test that non-operators cannot invite to invite-only channels.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: INVITE <nickname> <channel>
+        Server responds with one of:
+            442 <client> <channel> :You're not on that channel
+            482 <client> <channel> :You're not channel operator
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #noinvite
-        MODE #noinvite +i
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #noinvite
+        /mode #noinvite +i
 
         Terminal 2 (user2 - not in channel):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        INVITE user3 #noinvite
-        (Server sends): :ft_irc 442 user2 #noinvite :You're not on that channel
-                    OR: :ft_irc 482 user2 #noinvite :You're not channel operator
+        $ irssi
+        /connect localhost 6667 password user2
+        /invite user3 #noinvite
+        (Server sends error: You're not on that channel or not channel operator)
 
     Expected: Server rejects INVITE from users not in channel or non-operators
     """
@@ -363,23 +368,24 @@ def test_broadcast_message_to_all_channel_members(two_clients):
     """
     Test that messages are broadcast to all channel members.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server broadcasts: :<sender>!<user>@<host> PRIVMSG <channel> :<message>
+        Note: Server does NOT echo message back to sender
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #broadcast
-        PRIVMSG #broadcast :Broadcasting to all!
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #broadcast
+        /msg #broadcast Broadcasting to all!
         (Server does NOT echo back to sender)
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #broadcast
-        (Receives): :user1!user1@localhost PRIVMSG #broadcast :Broadcasting to all!
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #broadcast
+        (Receives channel message from user1)
 
     Expected: Server broadcasts to all members EXCEPT the sender
     """

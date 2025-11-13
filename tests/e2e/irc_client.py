@@ -2,7 +2,60 @@
 
 import socket
 import time
-from typing import List, Optional
+from typing import Dict, List, Optional
+
+
+class IRCMessage:
+    """Parsed IRC message structure."""
+
+    def __init__(self, raw_line: str):
+        """
+        Parse an IRC protocol message.
+
+        Format: [:prefix] COMMAND [param1 param2 ...] [:trailing]
+
+        Args:
+            raw_line: Raw IRC message line (without CRLF)
+        """
+        self.raw = raw_line
+        self.prefix = None
+        self.command = None
+        self.params = []
+
+        parts = raw_line.split(' ')
+        idx = 0
+
+        # Parse prefix (optional)
+        if parts[idx].startswith(':'):
+            self.prefix = parts[idx][1:]  # Remove leading ':'
+            idx += 1
+
+        # Parse command
+        if idx < len(parts):
+            self.command = parts[idx]
+            idx += 1
+
+        # Parse parameters
+        while idx < len(parts):
+            if parts[idx].startswith(':'):
+                # Trailing parameter (rest of message)
+                self.params.append(' '.join(parts[idx:])[1:])  # Remove leading ':'
+                break
+            else:
+                self.params.append(parts[idx])
+                idx += 1
+
+    def __repr__(self):
+        return f"IRCMessage(command={self.command}, prefix={self.prefix}, params={self.params})"
+
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for easy testing."""
+        return {
+            'raw': self.raw,
+            'prefix': self.prefix,
+            'command': self.command,
+            'params': self.params
+        }
 
 
 class IRCClient:
@@ -119,7 +172,7 @@ class IRCClient:
 
         return lines
 
-    def wait_for_reply(self, expected_code: str, timeout: float = 2.0) -> Optional[str]:
+    def wait_for_reply(self, expected_code: str, timeout: float = 2.0) -> Optional[IRCMessage]:
         """
         Wait for a specific numeric reply from server.
 
@@ -128,14 +181,15 @@ class IRCClient:
             timeout: Timeout in seconds
 
         Returns:
-            The matching line if found, None otherwise
+            Parsed IRCMessage if found, None otherwise
         """
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
                 line = self.recv_line()
-                if f" {expected_code} " in line:
-                    return line
+                msg = IRCMessage(line)
+                if msg.command == expected_code:
+                    return msg
             except socket.timeout:
                 continue
             except ConnectionError:
