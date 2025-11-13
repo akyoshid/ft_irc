@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 04:40:48 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 04:51:18 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -207,6 +207,15 @@ void BotClient::handleEvents() {
 }
 
 void BotClient::handleRead() {
+  if (!connectionVerified_) {
+    int error = 0;
+    socklen_t len = sizeof(error);
+    if (getsockopt(socketFd_, SOL_SOCKET, SO_ERROR, &error, &len) < 0 ||
+        error != 0) {
+      throw std::runtime_error("Connection failed");
+    }
+    connectionVerified_ = true;
+  }
   char buffer[kReadBufferSize];
   while (true) {
     ssize_t bytes = recv(socketFd_, buffer, sizeof(buffer), 0);
