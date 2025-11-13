@@ -182,7 +182,7 @@ void BotClient::handleEvents() {
     for (int i = 0; i < n; ++i) {
       uint32_t ev = events[i].events;
       if (ev & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-        log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
+        log(LOG_LEVEL_ERROR, LOG_CATEGORY_CONNECTION,
             "Connection closed unexpectedly");
         closeSocket();
         running_ = false;
