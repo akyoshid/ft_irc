@@ -2,6 +2,8 @@
 
 import time
 
+from irc_client import IRCMessage
+
 
 def test_privmsg_to_user(two_clients):
     """
@@ -37,8 +39,20 @@ def test_privmsg_to_user(two_clients):
 
     # Client2 should receive the message
     lines = client2.recv_lines(timeout=1.0)
-    msg_found = any("PRIVMSG" in line and test_message in line for line in lines)
-    assert msg_found, "Client2 should receive private message from Client1"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "Client2 should receive private message from Client1"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "user2"  # target
+    assert test_message in privmsg.params[1]  # message content
 
 
 def test_privmsg_to_channel(two_clients):
@@ -83,9 +97,20 @@ def test_privmsg_to_channel(two_clients):
 
     # Client2 should receive the message
     lines = client2.recv_lines(timeout=1.0)
-    msg_found = any("PRIVMSG" in line and "#chat" in line and test_message in line
-                    for line in lines)
-    assert msg_found, "Client2 should receive channel message"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "#chat" in msg.params[0] and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "Client2 should receive channel message"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "#chat"  # target channel
+    assert test_message in privmsg.params[1]  # message content
 
 
 def test_privmsg_to_nonexistent_user(authenticated_client):
@@ -109,6 +134,10 @@ def test_privmsg_to_nonexistent_user(authenticated_client):
     # Should receive error (401 - ERR_NOSUCHNICK)
     error = authenticated_client.wait_for_reply("401", timeout=1.0)
     assert error is not None, "Should receive no such nick error"
+    assert error.command == "401"
+    assert len(error.params) >= 2
+    assert error.params[0] == "testuser"  # target
+    assert error.params[1] == "nonexistent"  # the nick that doesn't exist
 
 
 def test_privmsg_to_channel_not_joined(authenticated_client):
@@ -140,8 +169,20 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
 
     # Should receive error (403, 404, or 401)
     lines = authenticated_client.recv_lines(timeout=1.0)
-    error_found = any("403" in line or "404" in line or "401" in line for line in lines)
-    assert error_found, f"Should receive error (403, 404, or 401), received: {lines}"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command in ["403", "404", "401"]:
+            error_msg = msg
+            break
+
+    assert error_msg is not None, f"Should receive error (403, 404, or 401), received: {lines}"
+    assert error_msg.command in ["403", "404", "401"]
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "testuser"  # target
+    assert error_msg.params[1] == "#notjoined"  # the channel
 
 
 def test_kick_user_from_channel(two_clients):
@@ -186,9 +227,22 @@ def test_kick_user_from_channel(two_clients):
 
     # Client2 should receive KICK notification
     lines = client2.recv_lines(timeout=1.0)
-    kick_found = any("KICK" in line and "#kick-test" in line and "user2" in line
-                     for line in lines)
-    assert kick_found, "Client2 should receive KICK notification"
+
+    # Validate KICK message structure
+    kick_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "KICK" and len(msg.params) >= 2 and "#kick-test" in msg.params[0] and "user2" in msg.params[1]:
+            kick_msg = msg
+            break
+
+    assert kick_msg is not None, "Client2 should receive KICK notification"
+    assert kick_msg.command == "KICK"
+    assert len(kick_msg.params) >= 2
+    assert kick_msg.params[0] == "#kick-test"  # channel
+    assert kick_msg.params[1] == "user2"  # kicked user
+    if len(kick_msg.params) >= 3:
+        assert kick_reason in kick_msg.params[2]  # kick reason (optional)
 
 
 def test_kick_without_operator_privilege(two_clients):
@@ -231,8 +285,20 @@ def test_kick_without_operator_privilege(two_clients):
 
     # Should receive error (482 - ERR_CHANOPRIVSNEEDED)
     lines = client2.recv_lines(timeout=1.0)
-    error_found = any("482" in line for line in lines)
-    assert error_found, "Non-operator should not be able to kick"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "482":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Non-operator should not be able to kick"
+    assert error_msg.command == "482"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"  # target
+    assert error_msg.params[1] == "#nokick"  # channel
 
 
 def test_invite_user_to_channel(two_clients):
@@ -279,15 +345,38 @@ def test_invite_user_to_channel(two_clients):
 
     # Client2 should receive INVITE notification
     lines = client2.recv_lines(timeout=1.0)
-    invite_found = any("INVITE" in line and "#invite-test" in line for line in lines)
-    assert invite_found, "Client2 should receive INVITE notification"
+
+    # Validate INVITE message structure
+    invite_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "INVITE" and len(msg.params) >= 2 and "#invite-test" in msg.params[1]:
+            invite_msg = msg
+            break
+
+    assert invite_msg is not None, "Client2 should receive INVITE notification"
+    assert invite_msg.command == "INVITE"
+    assert len(invite_msg.params) >= 2
+    assert invite_msg.params[0] == "user2"  # invited user
+    assert invite_msg.params[1] == "#invite-test"  # channel
 
     # Client2 should now be able to join
     client2.join("#invite-test")
     time.sleep(0.2)
     lines = client2.recv_lines(timeout=1.0)
-    join_found = any("JOIN" in line and "#invite-test" in line for line in lines)
-    assert join_found, "Client2 should be able to join after invite"
+
+    # Validate JOIN message structure
+    join_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "JOIN" and len(msg.params) >= 1 and "#invite-test" in msg.params[0]:
+            join_msg = msg
+            break
+
+    assert join_msg is not None, "Client2 should be able to join after invite"
+    assert join_msg.command == "JOIN"
+    assert len(join_msg.params) >= 1
+    assert join_msg.params[0] == "#invite-test"  # channel
 
 
 def test_invite_without_operator_privilege(two_clients):
@@ -353,8 +442,20 @@ def test_invite_without_operator_privilege(two_clients):
 
         # Should receive error (442 - ERR_NOTONCHANNEL or 482 - ERR_CHANOPRIVSNEEDED)
         lines = client2.recv_lines(timeout=1.0)
-        error_found = any("442" in line or "482" in line for line in lines)
-        assert error_found, "Non-member should not be able to invite"
+
+        # Validate error message structure
+        error_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command in ["442", "482"]:
+                error_msg = msg
+                break
+
+        assert error_msg is not None, "Non-member should not be able to invite"
+        assert error_msg.command in ["442", "482"]
+        assert len(error_msg.params) >= 2
+        assert error_msg.params[0] == "user2"  # target
+        assert error_msg.params[1] == "#noinvite"  # channel
 
     finally:
         try:
@@ -408,10 +509,28 @@ def test_broadcast_message_to_all_channel_members(two_clients):
 
     # Client2 should receive it
     lines_client2 = client2.recv_lines(timeout=1.0)
-    msg_found = any(test_message in line for line in lines_client2)
-    assert msg_found, "All channel members should receive broadcast message"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines_client2:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "#broadcast" in msg.params[0] and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "All channel members should receive broadcast message"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "#broadcast"  # target channel
+    assert test_message in privmsg.params[1]  # message content
 
     # Client1 should NOT receive their own message
     lines_client1 = client1.recv_lines(timeout=0.5)
-    msg_echoed = any(test_message in line and "PRIVMSG" in line for line in lines_client1)
+    msg_echoed = False
+    for line in lines_client1:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+            msg_echoed = True
+            break
+
     assert not msg_echoed, "Sender should not receive their own message"

@@ -1,6 +1,7 @@
 """Test channel operations (JOIN, PART, TOPIC, MODE)."""
 
 import time
+from irc_client import IRCMessage
 
 
 def test_join_channel(authenticated_client):
@@ -25,6 +26,19 @@ def test_join_channel(authenticated_client):
     lines = authenticated_client.recv_lines(timeout=1.0)
     join_found = any("JOIN" in line and "#test" in line for line in lines)
     assert join_found, "Should receive JOIN confirmation"
+
+    # Validate JOIN message structure
+    join_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "JOIN" and "#test" in msg.params:
+            join_msg = msg
+            break
+
+    assert join_msg is not None, "Should receive JOIN message"
+    assert join_msg.command == "JOIN"
+    assert len(join_msg.params) >= 1
+    assert join_msg.params[0] == "#test"
 
 
 def test_join_multiple_channels(authenticated_client):
@@ -62,6 +76,20 @@ def test_join_multiple_channels(authenticated_client):
     for channel in channels:
         join_found = any("JOIN" in line and channel in line for line in lines)
         assert join_found, f"Should receive JOIN confirmation for {channel}"
+
+    # Validate JOIN message structure for each channel
+    for channel in channels:
+        join_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "JOIN" and channel in msg.params:
+                join_msg = msg
+                break
+
+        assert join_msg is not None, f"Should receive JOIN message for {channel}"
+        assert join_msg.command == "JOIN"
+        assert len(join_msg.params) >= 1
+        assert join_msg.params[0] == channel
 
 
 def test_join_channel_with_key(two_clients):
@@ -108,11 +136,37 @@ def test_join_channel_with_key(two_clients):
     error_found = any("475" in line for line in lines)
     assert error_found, "Should receive bad channel key error without key"
 
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "475":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Should receive error 475"
+    assert error_msg.command == "475"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"
+
     # Client2 joins with correct key (should succeed)
     client2.join("#private", "secret123")
     lines = client2.recv_lines(timeout=1.0)
     join_found = any("JOIN" in line and "#private" in line for line in lines)
     assert join_found, "Should successfully join with correct key"
+
+    # Validate JOIN message structure
+    join_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "JOIN" and "#private" in msg.params:
+            join_msg = msg
+            break
+
+    assert join_msg is not None, "Should receive JOIN message"
+    assert join_msg.command == "JOIN"
+    assert len(join_msg.params) >= 1
+    assert join_msg.params[0] == "#private"
 
 
 def test_part_channel(authenticated_client):
@@ -144,6 +198,19 @@ def test_part_channel(authenticated_client):
     lines = authenticated_client.recv_lines(timeout=1.0)
     part_found = any("PART" in line and "#test" in line for line in lines)
     assert part_found, "Should receive PART confirmation"
+
+    # Validate PART message structure
+    part_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PART" and "#test" in msg.params:
+            part_msg = msg
+            break
+
+    assert part_msg is not None, "Should receive PART message"
+    assert part_msg.command == "PART"
+    assert len(part_msg.params) >= 1
+    assert part_msg.params[0] == "#test"
 
 
 def test_topic_operations(two_clients):
@@ -192,6 +259,20 @@ def test_topic_operations(two_clients):
     topic_found = any("TOPIC" in line and new_topic in line for line in lines)
     assert topic_found, "Client2 should receive topic change notification"
 
+    # Validate TOPIC message structure
+    topic_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "TOPIC" and new_topic in msg.params:
+            topic_msg = msg
+            break
+
+    assert topic_msg is not None, "Should receive TOPIC message"
+    assert topic_msg.command == "TOPIC"
+    assert len(topic_msg.params) >= 2
+    assert topic_msg.params[0] == "#topic-test"
+    assert topic_msg.params[1] == new_topic
+
 
 def test_mode_invite_only(two_clients):
     """
@@ -236,6 +317,19 @@ def test_mode_invite_only(two_clients):
     # Should receive error (473 - ERR_INVITEONLYCHAN)
     error_found = any("473" in line for line in lines)
     assert error_found, "Should receive invite-only error"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "473":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Should receive error 473"
+    assert error_msg.command == "473"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"
 
 
 def test_mode_topic_restricted(two_clients):
@@ -288,6 +382,19 @@ def test_mode_topic_restricted(two_clients):
     error_found = any("482" in line for line in lines)
     assert error_found, "Non-operator should not be able to change topic with +t"
 
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "482":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Should receive error 482"
+    assert error_msg.command == "482"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"
+
 
 def test_mode_user_limit(two_clients):
     """
@@ -331,3 +438,16 @@ def test_mode_user_limit(two_clients):
     # Should receive error (471 - ERR_CHANNELISFULL)
     error_found = any("471" in line for line in lines)
     assert error_found, "Should receive channel is full error"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "471":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Should receive error 471"
+    assert error_msg.command == "471"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"

@@ -5,7 +5,7 @@ and buffer management as required by the evaluation criteria.
 """
 
 import time
-from irc_client import IRCClient
+from irc_client import IRCClient, IRCMessage
 
 
 def test_channel_message_flood(two_clients):
@@ -71,17 +71,30 @@ def test_channel_message_flood(two_clients):
         pass
 
     # Check that we received some messages (server didn't crash)
-    flood_messages = [line for line in received_messages if "Flood message" in line]
+    flood_messages = []
+    for line in received_messages:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "Flood message" in msg.params[1]:
+            flood_messages.append(msg)
 
     # We should receive messages (exact count depends on buffering)
     # The key is that server doesn't crash or hang
     assert len(flood_messages) > 0, "Should receive at least some flood messages"
+    # Validate structure of first flood message
+    assert flood_messages[0].command == "PRIVMSG"
+    assert flood_messages[0].params[0] == "#flood"
 
     # Verify server is still responsive
     client1.ping("stillalive")
     lines = client1.recv_lines(timeout=2.0)
-    pong_found = any("PONG" in line for line in lines)
-    assert pong_found, "Server should still be responsive after flood"
+    pong_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PONG":
+            pong_msg = msg
+            break
+    assert pong_msg is not None, "Should receive PONG"
+    assert pong_msg.command == "PONG"
 
 
 def test_large_channel_broadcast(server_config):
@@ -149,8 +162,17 @@ def test_large_channel_broadcast(server_config):
         received_count = 0
         for client in clients[1:]:
             lines = client.recv_lines(timeout=1.0)
-            if any(test_message in line for line in lines):
+            privmsg_found = None
+            for line in lines:
+                msg = IRCMessage(line)
+                if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+                    privmsg_found = msg
+                    break
+            if privmsg_found:
                 received_count += 1
+                # Validate message structure
+                assert privmsg_found.command == "PRIVMSG"
+                assert privmsg_found.params[0] == "#large"
 
         # At least most clients should receive (allow for some timing issues)
         assert received_count >= len(clients) - 2, f"Most clients should receive broadcast (got {received_count}/{len(clients)-1})"
@@ -253,14 +275,27 @@ def test_multiple_channel_flood(server_config):
         # Verify server is still responsive
         sender.ping("stillalive")
         lines = sender.recv_lines(timeout=2.0)
-        pong_found = any("PONG" in line for line in lines)
-        assert pong_found, "Server should remain responsive after multi-channel flood"
+        pong_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "PONG":
+                pong_msg = msg
+                break
+        assert pong_msg is not None, "Should receive PONG"
+        assert pong_msg.command == "PONG"
 
         # Each receiver should have received some messages
         for i, client in enumerate(receivers):
             lines = client.recv_lines(timeout=2.0)
-            channel_messages = [line for line in lines if channels[i] in line]
+            channel_messages = []
+            for line in lines:
+                msg = IRCMessage(line)
+                if msg.command == "PRIVMSG" and len(msg.params) >= 1 and channels[i] in msg.params[0]:
+                    channel_messages.append(msg)
             assert len(channel_messages) > 0, f"Receiver {i} should receive messages from {channels[i]}"
+            # Validate structure of first message
+            assert channel_messages[0].command == "PRIVMSG"
+            assert channel_messages[0].params[0] == channels[i]
 
     finally:
         try:
@@ -355,16 +390,29 @@ def test_slow_client_doesnt_block_fast_clients(server_config):
 
         # Fast client should receive messages
         fast_lines = fast_client.recv_lines(timeout=2.0)
-        fast_messages = [line for line in fast_lines if "Message" in line]
+        fast_messages = []
+        for line in fast_lines:
+            msg = IRCMessage(line)
+            if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "Message" in msg.params[1]:
+                fast_messages.append(msg)
 
         # Fast client should receive some messages (not blocked by slow client)
         assert len(fast_messages) > 0, "Fast client should receive messages despite slow client"
+        # Validate structure of first message
+        assert fast_messages[0].command == "PRIVMSG"
+        assert fast_messages[0].params[0] == "#mixed"
 
         # Verify server is still responsive
         sender.ping("check")
         lines = sender.recv_lines(timeout=2.0)
-        pong_found = any("PONG" in line for line in lines)
-        assert pong_found, "Server should remain responsive"
+        pong_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "PONG":
+                pong_msg = msg
+                break
+        assert pong_msg is not None, "Should receive PONG"
+        assert pong_msg.command == "PONG"
 
     finally:
         try:

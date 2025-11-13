@@ -6,7 +6,7 @@ and partial command scenarios as required by the evaluation criteria.
 
 import socket
 import time
-from irc_client import IRCClient
+from irc_client import IRCClient, IRCMessage
 
 
 def test_partial_command(server_config):
@@ -272,8 +272,15 @@ def test_multiple_simultaneous_connections(server_config):
         # All other clients should receive the message
         for i, client in enumerate(clients[1:], start=1):
             lines = client.recv_lines(timeout=1.0)
-            msg_found = any(test_message in line for line in lines)
-            assert msg_found, f"Client {i} should receive broadcast message"
+            privmsg_found = None
+            for line in lines:
+                msg = IRCMessage(line)
+                if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+                    privmsg_found = msg
+                    break
+            assert privmsg_found is not None, f"Client {i} should receive broadcast message"
+            assert privmsg_found.command == "PRIVMSG"
+            assert privmsg_found.params[0] == "#multi"
 
     finally:
         for client in clients:
@@ -330,8 +337,14 @@ def test_buffer_overflow_protection(server_config):
         # The key is that server doesn't crash
         client.ping("stillalive")
         lines = client.recv_lines(timeout=2.0)
-        pong_found = any("PONG" in line for line in lines)
-        assert pong_found, "Server should still respond after receiving long command"
+        pong_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "PONG":
+                pong_msg = msg
+                break
+        assert pong_msg is not None, "Should receive PONG"
+        assert pong_msg.command == "PONG"
 
     finally:
         client.disconnect()
