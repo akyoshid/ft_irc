@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 01:14:13 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 03:03:01 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include <cctype>
+#include <cstdlib>
 #include <cstring>
 #include <ctime>
 #include <stdexcept>
@@ -31,6 +32,57 @@ const int kReadBufferSize = 4096;
 
 bool startsWith(const std::string& text, const std::string& prefix) {
   return text.compare(0, prefix.size(), prefix) == 0;
+}
+
+enum RpsHand { RPS_ROCK = 0, RPS_PAPER, RPS_SCISSORS };
+
+bool parseRpsHand(const std::string& token, RpsHand* out) {
+  if (token == "rock" || token == "r") {
+    *out = RPS_ROCK;
+    return true;
+  }
+  if (token == "paper" || token == "p") {
+    *out = RPS_PAPER;
+    return true;
+  }
+  if (token == "scissors" || token == "s") {
+    *out = RPS_SCISSORS;
+    return true;
+  }
+  return false;
+}
+
+std::string rpsHandToString(RpsHand hand) {
+  switch (hand) {
+    case RPS_ROCK:
+      return "rock✊";
+    case RPS_PAPER:
+      return "paper🖐️";
+    case RPS_SCISSORS:
+      return "scissors✌️";
+  }
+  return "unknown";
+}
+
+RpsHand randomRpsHand() {
+  static bool seeded = false;
+  if (!seeded) {
+    std::srand(static_cast<unsigned int>(std::time(NULL)));
+    seeded = true;
+  }
+  return static_cast<RpsHand>(std::rand() % 3);
+}
+
+std::string rpsResultMessage(RpsHand userHand, RpsHand botHand) {
+  if (userHand == botHand) {
+    return "It's a tie!🙈";
+  }
+  if ((userHand == RPS_ROCK && botHand == RPS_SCISSORS) ||
+      (userHand == RPS_PAPER && botHand == RPS_ROCK) ||
+      (userHand == RPS_SCISSORS && botHand == RPS_PAPER)) {
+    return "You win!⭐";
+  }
+  return "You lose😵";
 }
 
 }  // namespace
@@ -294,13 +346,46 @@ void BotClient::respondToUser(const std::string& target,
 
   std::string message;
   if (lower == "!help") {
-    message = "Available commands: !help, !time, !ping, !about";
+    message = "Available commands: !help, !time, !ping, !about, !rps <hand>";
   } else if (lower == "!time") {
     message = "Current time: " + currentTimeString();
   } else if (lower == "!ping") {
     message = "Pong!";
   } else if (lower == "!about") {
     message = "I am an IRC bot built for ft_irc";
+  } else if (startsWith(lower, "!rps")) {
+    const std::string::size_type commandLength = 4;  // strlen("!rps")
+    if (lower.size() == commandLength) {
+      message = "Usage: !rps <rock|paper|scissors>";
+    } else if (!std::isspace(
+                   static_cast<unsigned char>(lower[commandLength]))) {
+      return;
+    } else {
+      std::string::size_type pos = commandLength;
+      while (pos < lower.size() &&
+             std::isspace(static_cast<unsigned char>(lower[pos]))) {
+        ++pos;
+      }
+      if (pos == lower.size()) {
+        message = "Usage: !rps <rock|paper|scissors>";
+      } else {
+        std::string::size_type end = pos;
+        while (end < lower.size() &&
+               !std::isspace(static_cast<unsigned char>(lower[end]))) {
+          ++end;
+        }
+        std::string token = lower.substr(pos, end - pos);
+        RpsHand userHand;
+        if (!parseRpsHand(token, &userHand)) {
+          message = "Invalid hand. Use rock(r), paper(p), or scissors(s).";
+        } else {
+          RpsHand botHand = randomRpsHand();
+          std::string result = rpsResultMessage(userHand, botHand);
+          message = "You chose " + rpsHandToString(userHand) + ", I chose " +
+                    rpsHandToString(botHand) + ". " + result;
+        }
+      }
+    }
   } else {
     return;
   }
