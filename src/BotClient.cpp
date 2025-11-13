@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 04:11:45 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 04:20:32 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -432,9 +432,12 @@ std::string BotClient::extractNickname(const std::string& prefix) const {
 
 std::string BotClient::currentTimeString() const {
   std::time_t now = std::time(NULL);
-  std::tm tm = *std::localtime(&now);
+  std::tm* tm_ptr = std::localtime(&now);
+  if (tm_ptr == NULL) {
+    return "Unknown";
+  }
   char buffer[64];
-  if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm) == 0)
+  if (std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", tm_ptr) == 0)
     return "Unknown";
   return buffer;
 }
