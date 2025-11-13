@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 03:22:48 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 03:53:05 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -55,11 +55,11 @@ bool parseRpsHand(const std::string& token, RpsHand* out) {
 std::string rpsHandToString(RpsHand hand) {
   switch (hand) {
     case RPS_ROCK:
-      return "rock✊";
+      return "rock";
     case RPS_PAPER:
-      return "paper🖐️";
+      return "paper";
     case RPS_SCISSORS:
-      return "scissors✌️";
+      return "scissors";
   }
   return "unknown";
 }
@@ -75,14 +75,14 @@ RpsHand randomRpsHand() {
 
 std::string rpsResultMessage(RpsHand userHand, RpsHand botHand) {
   if (userHand == botHand) {
-    return "It's a tie!🙈";
+    return "It's a tie!";
   }
   if ((userHand == RPS_ROCK && botHand == RPS_SCISSORS) ||
       (userHand == RPS_PAPER && botHand == RPS_ROCK) ||
       (userHand == RPS_SCISSORS && botHand == RPS_PAPER)) {
-    return "You win!⭐";
+    return "You win!";
   }
-  return "You lose😵";
+  return "You lose";
 }
 
 }  // namespace
