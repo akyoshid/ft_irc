@@ -5,38 +5,39 @@ and buffer management as required by the evaluation criteria.
 """
 
 import time
-from irc_client import IRCClient
+from irc_client import IRCClient, IRCMessage
 
 
 def test_channel_message_flood(two_clients):
     """
     Test server handling of channel message flooding.
 
+    IRC Protocol: Tests server's ability to handle rapid PRIVMSG commands
+    and message queue management.
+
     Manual reproduction:
         Terminal 1 (receiver):
-        $ nc -C localhost 6667
-        PASS password
-        NICK receiver
-        USER receiver 0 * :Receiver
-        JOIN #flood
-        (Press Ctrl+Z to stop the process)
+        $ irssi
+        /connect localhost 6667 password receiver
+        /join #flood
+        (Messages will queue up while receiving)
 
         Terminal 2 (sender):
-        $ nc -C localhost 6667
-        PASS password
-        NICK sender
-        USER sender 0 * :Sender
-        JOIN #flood
-        PRIVMSG #flood :Message 1
-        PRIVMSG #flood :Message 2
-        ... (send 100+ messages rapidly)
+        $ irssi
+        /connect localhost 6667 password sender
+        /join #flood
 
-        Terminal 1:
-        (Resume with 'fg')
-        (All messages should be delivered)
+        Send messages rapidly using a loop or script:
+        /msg #flood Message 1
+        /msg #flood Message 2
+        ... (send 100+ messages rapidly by pasting or scripting)
 
     Expected: Server queues messages and delivers when client is ready.
              No memory leaks during this operation.
+
+    IRC Protocol Format:
+        PRIVMSG #flood :message text
+        Server broadcasts: :sender!~sender@host PRIVMSG #flood :message text
 
     Note: This test simulates the stopped client by using a slow reader.
     """
@@ -70,36 +71,55 @@ def test_channel_message_flood(two_clients):
         pass
 
     # Check that we received some messages (server didn't crash)
-    flood_messages = [line for line in received_messages if "Flood message" in line]
+    flood_messages = []
+    for line in received_messages:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "Flood message" in msg.params[1]:
+            flood_messages.append(msg)
 
     # We should receive messages (exact count depends on buffering)
     # The key is that server doesn't crash or hang
     assert len(flood_messages) > 0, "Should receive at least some flood messages"
+    # Validate structure of first flood message
+    assert flood_messages[0].command == "PRIVMSG"
+    assert flood_messages[0].params[0] == "#flood"
 
     # Verify server is still responsive
     client1.ping("stillalive")
     lines = client1.recv_lines(timeout=2.0)
-    pong_found = any("PONG" in line for line in lines)
-    assert pong_found, "Server should still be responsive after flood"
+    pong_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PONG":
+            pong_msg = msg
+            break
+    assert pong_msg is not None, "Should receive PONG"
+    assert pong_msg.command == "PONG"
 
 
 def test_large_channel_broadcast(server_config):
     """
     Test broadcasting messages to a channel with many users.
 
+    IRC Protocol: Tests server's broadcast efficiency when sending messages
+    to channels with multiple members.
+
     Manual reproduction:
         Terminal 1-5 (5 different users):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1  (user2, user3, user4, user5)
-        USER user1 0 * :User One  (etc.)
-        JOIN #large
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #large
+        (Repeat for user2, user3, user4, user5 in separate terminals)
 
         Terminal 1:
-        PRIVMSG #large :Message to all!
+        /msg #large Message to all!
         (All other 4 terminals should receive the message)
 
     Expected: Server efficiently broadcasts to all channel members
+
+    IRC Messages:
+        Client sends: PRIVMSG #large :Message to all!
+        Each member receives: :user1!~user1@host PRIVMSG #large :Message to all!
     """
     clients = []
     try:
@@ -142,8 +162,17 @@ def test_large_channel_broadcast(server_config):
         received_count = 0
         for client in clients[1:]:
             lines = client.recv_lines(timeout=1.0)
-            if any(test_message in line for line in lines):
+            privmsg_found = None
+            for line in lines:
+                msg = IRCMessage(line)
+                if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+                    privmsg_found = msg
+                    break
+            if privmsg_found:
                 received_count += 1
+                # Validate message structure
+                assert privmsg_found.command == "PRIVMSG"
+                assert privmsg_found.params[0] == "#large"
 
         # At least most clients should receive (allow for some timing issues)
         assert received_count >= len(clients) - 2, f"Most clients should receive broadcast (got {received_count}/{len(clients)-1})"
@@ -160,21 +189,29 @@ def test_multiple_channel_flood(server_config):
     """
     Test flooding messages across multiple channels simultaneously.
 
+    IRC Protocol: Tests server's ability to handle rapid PRIVMSG commands
+    across multiple channels concurrently.
+
     Manual reproduction:
         Terminal 1:
-        $ nc -C localhost 6667
-        PASS password
-        NICK flooder
-        USER flooder 0 * :Flooder
-        JOIN #chan1
-        JOIN #chan2
-        JOIN #chan3
+        $ irssi
+        /connect localhost 6667 password flooder
+        /join #chan1
+        /join #chan2
+        /join #chan3
+
+        Send messages rapidly to different channels:
+        /msg #chan1 Message to chan1
+        /msg #chan2 Message to chan2
+        /msg #chan3 Message to chan3
+        (Repeat rapidly by pasting multiple times or using a script)
+
+    Expected: Server handles multi-channel flooding without issues
+
+    IRC Protocol Format:
         PRIVMSG #chan1 :Message to chan1
         PRIVMSG #chan2 :Message to chan2
         PRIVMSG #chan3 :Message to chan3
-        (Repeat rapidly)
-
-    Expected: Server handles multi-channel flooding without issues
     """
     sender = IRCClient(
         host=server_config["host"],
@@ -238,14 +275,27 @@ def test_multiple_channel_flood(server_config):
         # Verify server is still responsive
         sender.ping("stillalive")
         lines = sender.recv_lines(timeout=2.0)
-        pong_found = any("PONG" in line for line in lines)
-        assert pong_found, "Server should remain responsive after multi-channel flood"
+        pong_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "PONG":
+                pong_msg = msg
+                break
+        assert pong_msg is not None, "Should receive PONG"
+        assert pong_msg.command == "PONG"
 
         # Each receiver should have received some messages
         for i, client in enumerate(receivers):
             lines = client.recv_lines(timeout=2.0)
-            channel_messages = [line for line in lines if channels[i] in line]
+            channel_messages = []
+            for line in lines:
+                msg = IRCMessage(line)
+                if msg.command == "PRIVMSG" and len(msg.params) >= 1 and channels[i] in msg.params[0]:
+                    channel_messages.append(msg)
             assert len(channel_messages) > 0, f"Receiver {i} should receive messages from {channels[i]}"
+            # Validate structure of first message
+            assert channel_messages[0].command == "PRIVMSG"
+            assert channel_messages[0].params[0] == channels[i]
 
     finally:
         try:
@@ -263,35 +313,40 @@ def test_slow_client_doesnt_block_fast_clients(server_config):
     """
     Test that a slow-reading client doesn't block fast clients.
 
+    IRC Protocol: Tests server's non-blocking I/O and per-client buffer management
+    to ensure one slow client doesn't impact others.
+
     Manual reproduction:
         Terminal 1 (slow client):
-        $ nc -C localhost 6667
-        PASS password
-        NICK slowclient
-        USER slowclient 0 * :Slow
-        JOIN #mixed
-        (Press Ctrl+Z to stop reading)
+        $ irssi
+        /connect localhost 6667 password slowclient
+        /join #mixed
+        (Press Ctrl+Z to suspend and simulate slow reading)
 
         Terminal 2 (fast client):
-        $ nc -C localhost 6667
-        PASS password
-        NICK fastclient
-        USER fastclient 0 * :Fast
-        JOIN #mixed
+        $ irssi
+        /connect localhost 6667 password fastclient
+        /join #mixed
 
         Terminal 3 (sender):
-        $ nc -C localhost 6667
-        PASS password
-        NICK sender
-        USER sender 0 * :Sender
-        JOIN #mixed
-        PRIVMSG #mixed :Message 1
-        ... (send many messages)
+        $ irssi
+        /connect localhost 6667 password sender
+        /join #mixed
+
+        Send multiple messages rapidly:
+        /msg #mixed Message 1
+        /msg #mixed Message 2
+        ... (send many messages rapidly)
 
         Terminal 2:
-        (Should continue receiving messages)
+        (Should continue receiving messages despite Terminal 1 being suspended)
 
     Expected: Fast clients continue receiving messages even if slow client is blocked
+
+    IRC Messages:
+        Sender broadcasts: PRIVMSG #mixed :Message N
+        Fast client receives: :sender!~sender@host PRIVMSG #mixed :Message N
+        Slow client buffer fills but doesn't block others
     """
     sender = IRCClient(
         host=server_config["host"],
@@ -335,16 +390,29 @@ def test_slow_client_doesnt_block_fast_clients(server_config):
 
         # Fast client should receive messages
         fast_lines = fast_client.recv_lines(timeout=2.0)
-        fast_messages = [line for line in fast_lines if "Message" in line]
+        fast_messages = []
+        for line in fast_lines:
+            msg = IRCMessage(line)
+            if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "Message" in msg.params[1]:
+                fast_messages.append(msg)
 
         # Fast client should receive some messages (not blocked by slow client)
         assert len(fast_messages) > 0, "Fast client should receive messages despite slow client"
+        # Validate structure of first message
+        assert fast_messages[0].command == "PRIVMSG"
+        assert fast_messages[0].params[0] == "#mixed"
 
         # Verify server is still responsive
         sender.ping("check")
         lines = sender.recv_lines(timeout=2.0)
-        pong_found = any("PONG" in line for line in lines)
-        assert pong_found, "Server should remain responsive"
+        pong_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command == "PONG":
+                pong_msg = msg
+                break
+        assert pong_msg is not None, "Should receive PONG"
+        assert pong_msg.command == "PONG"
 
     finally:
         try:

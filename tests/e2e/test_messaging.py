@@ -2,25 +2,27 @@
 
 import time
 
+from irc_client import IRCMessage
+
 
 def test_privmsg_to_user(two_clients):
     """
     Test sending private message to another user.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <nickname> :<message>
+        Server relays: :<sender>!<user>@<host> PRIVMSG <target> :<message>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        PRIVMSG user2 :Hello user2!
+        $ irssi
+        /connect localhost 6667 password user1
+        /msg user2 Hello user2!
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        (Receives): :user1!user1@localhost PRIVMSG user2 :Hello user2!
+        $ irssi
+        /connect localhost 6667 password user2
+        (Receives private message from user1)
 
     Expected: Server delivers private message from user1 to user2
     """
@@ -37,30 +39,42 @@ def test_privmsg_to_user(two_clients):
 
     # Client2 should receive the message
     lines = client2.recv_lines(timeout=1.0)
-    msg_found = any("PRIVMSG" in line and test_message in line for line in lines)
-    assert msg_found, "Client2 should receive private message from Client1"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "Client2 should receive private message from Client1"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "user2"  # target
+    assert test_message in privmsg.params[1]  # message content
 
 
 def test_privmsg_to_channel(two_clients):
     """
     Test sending message to channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server broadcasts: :<sender>!<user>@<host> PRIVMSG <channel> :<message>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #chat
-        PRIVMSG #chat :Hello everyone in #chat!
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #chat
+        /msg #chat Hello everyone in #chat!
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #chat
-        (Receives): :user1!user1@localhost PRIVMSG #chat :Hello everyone in #chat!
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #chat
+        (Receives channel message from user1)
 
     Expected: Server broadcasts channel message to all members except sender
     """
@@ -83,22 +97,35 @@ def test_privmsg_to_channel(two_clients):
 
     # Client2 should receive the message
     lines = client2.recv_lines(timeout=1.0)
-    msg_found = any("PRIVMSG" in line and "#chat" in line and test_message in line
-                    for line in lines)
-    assert msg_found, "Client2 should receive channel message"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "#chat" in msg.params[0] and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "Client2 should receive channel message"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "#chat"  # target channel
+    assert test_message in privmsg.params[1]  # message content
 
 
 def test_privmsg_to_nonexistent_user(authenticated_client):
     """
     Test sending message to non-existent user.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        PRIVMSG nonexistent :Hello?
-        (Server sends): :ft_irc 401 testuser nonexistent :No such nick/channel
+    IRC Protocol:
+        Client sends: PRIVMSG <nickname> :<message>
+        Server responds: 401 <client> <nickname> :No such nick/channel
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /msg nonexistent Hello?
+        (Server sends error: No such nick/channel)
 
     Expected: Server returns ERR_NOSUCHNICK (401)
     """
@@ -107,21 +134,28 @@ def test_privmsg_to_nonexistent_user(authenticated_client):
     # Should receive error (401 - ERR_NOSUCHNICK)
     error = authenticated_client.wait_for_reply("401", timeout=1.0)
     assert error is not None, "Should receive no such nick error"
+    assert error.command == "401"
+    assert len(error.params) >= 2
+    assert error.params[0] == "testuser"  # target
+    assert error.params[1] == "nonexistent"  # the nick that doesn't exist
 
 
 def test_privmsg_to_channel_not_joined(authenticated_client):
     """
     Test sending message to channel not joined.
 
-    Manual reproduction:
-        $ nc -C localhost 6667
-        PASS password
-        NICK testuser
-        USER testuser 0 * :Test User
-        PRIVMSG #notjoined :Hello?
-        (Server sends): :ft_irc 403 testuser #notjoined :No such channel
-                    OR: :ft_irc 404 testuser #notjoined :Cannot send to channel
-                    OR: :ft_irc 401 testuser #notjoined :No such nick/channel
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server responds with one of:
+            403 <client> <channel> :No such channel
+            404 <client> <channel> :Cannot send to channel
+            401 <client> <channel> :No such nick/channel
+
+    Manual reproduction with irssi:
+        $ irssi
+        /connect localhost 6667 password testuser
+        /msg #notjoined Hello?
+        (Server sends error indicating channel doesn't exist or cannot send)
 
     Expected: Server returns an error indicating the channel doesn't exist or
               the user cannot send to it (403, 404, or 401)
@@ -135,31 +169,42 @@ def test_privmsg_to_channel_not_joined(authenticated_client):
 
     # Should receive error (403, 404, or 401)
     lines = authenticated_client.recv_lines(timeout=1.0)
-    error_found = any("403" in line or "404" in line or "401" in line for line in lines)
-    assert error_found, f"Should receive error (403, 404, or 401), received: {lines}"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command in ["403", "404", "401"]:
+            error_msg = msg
+            break
+
+    assert error_msg is not None, f"Should receive error (403, 404, or 401), received: {lines}"
+    assert error_msg.command in ["403", "404", "401"]
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "testuser"  # target
+    assert error_msg.params[1] == "#notjoined"  # the channel
 
 
 def test_kick_user_from_channel(two_clients):
     """
     Test kicking a user from channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: KICK <channel> <nickname> :<reason>
+        Server broadcasts: :<operator>!<user>@<host> KICK <channel> <nickname> :<reason>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #kick-test
-        KICK #kick-test user2 :You have been kicked
-        (Server sends): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #kick-test
+        /kick user2 You have been kicked
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #kick-test
-        (Receives): :user1!user1@localhost KICK #kick-test user2 :You have been kicked
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #kick-test
+        (Receives KICK notification and is removed from channel)
 
     Expected: Server broadcasts KICK to all channel members and removes kicked user
     """
@@ -182,31 +227,44 @@ def test_kick_user_from_channel(two_clients):
 
     # Client2 should receive KICK notification
     lines = client2.recv_lines(timeout=1.0)
-    kick_found = any("KICK" in line and "#kick-test" in line and "user2" in line
-                     for line in lines)
-    assert kick_found, "Client2 should receive KICK notification"
+
+    # Validate KICK message structure
+    kick_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "KICK" and len(msg.params) >= 2 and "#kick-test" in msg.params[0] and "user2" in msg.params[1]:
+            kick_msg = msg
+            break
+
+    assert kick_msg is not None, "Client2 should receive KICK notification"
+    assert kick_msg.command == "KICK"
+    assert len(kick_msg.params) >= 2
+    assert kick_msg.params[0] == "#kick-test"  # channel
+    assert kick_msg.params[1] == "user2"  # kicked user
+    if len(kick_msg.params) >= 3:
+        assert kick_reason in kick_msg.params[2]  # kick reason (optional)
 
 
 def test_kick_without_operator_privilege(two_clients):
     """
     Test that non-operators cannot kick users.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: KICK <channel> <nickname> :<reason>
+        Server responds: 482 <client> <channel> :You're not channel operator
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #nokick
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #nokick
 
         Terminal 2 (user2 - regular user):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #nokick
-        KICK #nokick user1 :Trying to kick
-        (Server sends): :ft_irc 482 user2 #nokick :You're not channel operator
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #nokick
+        /kick user1 Trying to kick
+        (Server sends error: You're not channel operator)
 
     Expected: Server rejects KICK from non-operators (ERR_CHANOPRIVSNEEDED)
     """
@@ -227,33 +285,45 @@ def test_kick_without_operator_privilege(two_clients):
 
     # Should receive error (482 - ERR_CHANOPRIVSNEEDED)
     lines = client2.recv_lines(timeout=1.0)
-    error_found = any("482" in line for line in lines)
-    assert error_found, "Non-operator should not be able to kick"
+
+    # Validate error message structure
+    error_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "482":
+            error_msg = msg
+            break
+
+    assert error_msg is not None, "Non-operator should not be able to kick"
+    assert error_msg.command == "482"
+    assert len(error_msg.params) >= 2
+    assert error_msg.params[0] == "user2"  # target
+    assert error_msg.params[1] == "#nokick"  # channel
 
 
 def test_invite_user_to_channel(two_clients):
     """
     Test inviting a user to channel.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: INVITE <nickname> <channel>
+        Server confirms: 341 <client> <nickname> <channel>
+        Server notifies: :<inviter>!<user>@<host> INVITE <nickname> :<channel>
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #invite-test
-        MODE #invite-test +i
-        INVITE user2 #invite-test
-        (Server sends): :ft_irc 341 user1 user2 #invite-test
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #invite-test
+        /mode #invite-test +i
+        /invite user2 #invite-test
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        (Receives): :user1!user1@localhost INVITE user2 :#invite-test
-        JOIN #invite-test
-        (Server sends): :user2!user2@localhost JOIN :#invite-test
+        $ irssi
+        /connect localhost 6667 password user2
+        (Receives INVITE notification from user1)
+        /join #invite-test
+        (Successfully joins the invite-only channel)
 
     Expected: Server sends INVITE notification and allows invited user to join
     """
@@ -275,38 +345,62 @@ def test_invite_user_to_channel(two_clients):
 
     # Client2 should receive INVITE notification
     lines = client2.recv_lines(timeout=1.0)
-    invite_found = any("INVITE" in line and "#invite-test" in line for line in lines)
-    assert invite_found, "Client2 should receive INVITE notification"
+
+    # Validate INVITE message structure
+    invite_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "INVITE" and len(msg.params) >= 2 and "#invite-test" in msg.params[1]:
+            invite_msg = msg
+            break
+
+    assert invite_msg is not None, "Client2 should receive INVITE notification"
+    assert invite_msg.command == "INVITE"
+    assert len(invite_msg.params) >= 2
+    assert invite_msg.params[0] == "user2"  # invited user
+    assert invite_msg.params[1] == "#invite-test"  # channel
 
     # Client2 should now be able to join
     client2.join("#invite-test")
     time.sleep(0.2)
     lines = client2.recv_lines(timeout=1.0)
-    join_found = any("JOIN" in line and "#invite-test" in line for line in lines)
-    assert join_found, "Client2 should be able to join after invite"
+
+    # Validate JOIN message structure
+    join_msg = None
+    for line in lines:
+        msg = IRCMessage(line)
+        if msg.command == "JOIN" and len(msg.params) >= 1 and "#invite-test" in msg.params[0]:
+            join_msg = msg
+            break
+
+    assert join_msg is not None, "Client2 should be able to join after invite"
+    assert join_msg.command == "JOIN"
+    assert len(join_msg.params) >= 1
+    assert join_msg.params[0] == "#invite-test"  # channel
 
 
 def test_invite_without_operator_privilege(two_clients):
     """
     Test that non-operators cannot invite to invite-only channels.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: INVITE <nickname> <channel>
+        Server responds with one of:
+            442 <client> <channel> :You're not on that channel
+            482 <client> <channel> :You're not channel operator
+
+    Manual reproduction with irssi:
         Terminal 1 (user1 - operator):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #noinvite
-        MODE #noinvite +i
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #noinvite
+        /mode #noinvite +i
 
         Terminal 2 (user2 - not in channel):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        INVITE user3 #noinvite
-        (Server sends): :ft_irc 442 user2 #noinvite :You're not on that channel
-                    OR: :ft_irc 482 user2 #noinvite :You're not channel operator
+        $ irssi
+        /connect localhost 6667 password user2
+        /invite user3 #noinvite
+        (Server sends error: You're not on that channel or not channel operator)
 
     Expected: Server rejects INVITE from users not in channel or non-operators
     """
@@ -348,8 +442,20 @@ def test_invite_without_operator_privilege(two_clients):
 
         # Should receive error (442 - ERR_NOTONCHANNEL or 482 - ERR_CHANOPRIVSNEEDED)
         lines = client2.recv_lines(timeout=1.0)
-        error_found = any("442" in line or "482" in line for line in lines)
-        assert error_found, "Non-member should not be able to invite"
+
+        # Validate error message structure
+        error_msg = None
+        for line in lines:
+            msg = IRCMessage(line)
+            if msg.command in ["442", "482"]:
+                error_msg = msg
+                break
+
+        assert error_msg is not None, "Non-member should not be able to invite"
+        assert error_msg.command in ["442", "482"]
+        assert len(error_msg.params) >= 2
+        assert error_msg.params[0] == "user2"  # target
+        assert error_msg.params[1] == "#noinvite"  # channel
 
     finally:
         try:
@@ -363,23 +469,24 @@ def test_broadcast_message_to_all_channel_members(two_clients):
     """
     Test that messages are broadcast to all channel members.
 
-    Manual reproduction:
+    IRC Protocol:
+        Client sends: PRIVMSG <channel> :<message>
+        Server broadcasts: :<sender>!<user>@<host> PRIVMSG <channel> :<message>
+        Note: Server does NOT echo message back to sender
+
+    Manual reproduction with irssi:
         Terminal 1 (user1):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user1
-        USER user1 0 * :User One
-        JOIN #broadcast
-        PRIVMSG #broadcast :Broadcasting to all!
+        $ irssi
+        /connect localhost 6667 password user1
+        /join #broadcast
+        /msg #broadcast Broadcasting to all!
         (Server does NOT echo back to sender)
 
         Terminal 2 (user2):
-        $ nc -C localhost 6667
-        PASS password
-        NICK user2
-        USER user2 0 * :User Two
-        JOIN #broadcast
-        (Receives): :user1!user1@localhost PRIVMSG #broadcast :Broadcasting to all!
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #broadcast
+        (Receives channel message from user1)
 
     Expected: Server broadcasts to all members EXCEPT the sender
     """
@@ -402,10 +509,28 @@ def test_broadcast_message_to_all_channel_members(two_clients):
 
     # Client2 should receive it
     lines_client2 = client2.recv_lines(timeout=1.0)
-    msg_found = any(test_message in line for line in lines_client2)
-    assert msg_found, "All channel members should receive broadcast message"
+
+    # Validate PRIVMSG structure
+    privmsg = None
+    for line in lines_client2:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and "#broadcast" in msg.params[0] and test_message in msg.params[1]:
+            privmsg = msg
+            break
+
+    assert privmsg is not None, "All channel members should receive broadcast message"
+    assert privmsg.command == "PRIVMSG"
+    assert len(privmsg.params) >= 2
+    assert privmsg.params[0] == "#broadcast"  # target channel
+    assert test_message in privmsg.params[1]  # message content
 
     # Client1 should NOT receive their own message
     lines_client1 = client1.recv_lines(timeout=0.5)
-    msg_echoed = any(test_message in line and "PRIVMSG" in line for line in lines_client1)
+    msg_echoed = False
+    for line in lines_client1:
+        msg = IRCMessage(line)
+        if msg.command == "PRIVMSG" and len(msg.params) >= 2 and test_message in msg.params[1]:
+            msg_echoed = True
+            break
+
     assert not msg_echoed, "Sender should not receive their own message"
