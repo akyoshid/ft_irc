@@ -37,6 +37,10 @@
 *.out
 *.app
 ircserv
+unit_tester
 
 # debug information files
 *.dwo
+
+# Goolge test files
+googletest/
