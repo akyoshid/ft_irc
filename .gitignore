@@ -37,6 +37,7 @@
 *.out
 *.app
 ircserv
+ircbot
 
 # debug information files
 *.dwo
