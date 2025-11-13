@@ -185,9 +185,10 @@ void BotClient::handleEvents() {
     for (int i = 0; i < n; ++i) {
       uint32_t ev = events[i].events;
       if (ev & (EPOLLERR | EPOLLHUP | EPOLLRDHUP)) {
-        running_ = false;
         log(LOG_LEVEL_WARNING, LOG_CATEGORY_CONNECTION,
             "Connection closed unexpectedly");
+        closeSocket();
+        running_ = false;
         break;
       }
       if (ev & EPOLLIN) {
@@ -202,6 +203,9 @@ void BotClient::handleEvents() {
   if (g_shutdown) {
     enqueueMessage("QUIT :Shutting down");
     log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION, "Sending QUIT message");
+    // Give time for QUIT message to be sent
+    handleWrite();
+    closeSocket();
   }
 }
 
