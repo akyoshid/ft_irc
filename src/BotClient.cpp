@@ -406,7 +406,11 @@ void BotClient::respondToUser(const std::string& target,
 }
 
 void BotClient::enqueueMessage(const std::string& message) {
-  log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK, ">> " + message);
+  if (!startsWith(message, "PASS ")) {
+    log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK, ">> " + message);
+  } else {
+    log(LOG_LEVEL_DEBUG, LOG_CATEGORY_NETWORK, ">> PASS ***");
+  }
   writeBuffer_ += message + "\r\n";
   eventLoop_.modifyFd(socketFd_, EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLERR);
   handleWrite();
