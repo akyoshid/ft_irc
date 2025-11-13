@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 04:20:32 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 04:40:48 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -128,22 +128,18 @@ void BotClient::connectToServer() {
   }
 
   int errsv = 0;
+  int fd = -1;
   try {
     for (struct addrinfo* rp = result; rp != NULL; rp = rp->ai_next) {
-      int fd = -1;
-      try {
-        fd = createNonBlockingSocket();
-        int connectResult = connect(fd, rp->ai_addr, rp->ai_addrlen);
-        if (connectResult == 0 || errno == EINPROGRESS) {
-          socketFd_ = fd;
-          break;
-        }
-        errsv = errno;
-        close(fd);
-      } catch (...) {
-        if (fd != -1) close(fd);
-        throw;
+      fd = createNonBlockingSocket();
+      int connectResult = connect(fd, rp->ai_addr, rp->ai_addrlen);
+      if (connectResult == 0 || errno == EINPROGRESS) {
+        socketFd_ = fd;
+        break;
       }
+      errsv = errno;
+      close(fd);
+      fd = -1;
     }
     if (socketFd_ == INVALID_FD) {
       freeaddrinfo(result);
@@ -152,6 +148,7 @@ void BotClient::connectToServer() {
           createErrorMessage("connect", errsv));
     }
   } catch (...) {
+    if (fd != -1) close(fd);
     freeaddrinfo(result);
     throw;
   }
