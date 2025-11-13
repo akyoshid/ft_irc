@@ -17,6 +17,43 @@ jobs:
     - name: Build
       run: make
 
+  unit-test:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y cmake
+
+    - name: Build project
+      run: make
+
+    - name: Run unit tests
+      run: make unit
+
+  e2e-test:
+    runs-on: ubuntu-22.04
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v5
+
+    - name: Install Python and uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+    - name: Build project
+      run: make
+
+    - name: Setup E2E environment
+      run: make e2e-setup
+
+    - name: Run E2E tests
+      run: make e2e
+
   format:
     runs-on: ubuntu-22.04
 

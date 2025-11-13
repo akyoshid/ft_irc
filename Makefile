@@ -69,3 +69,5 @@ format:
 .PHONY: lint
 lint:
 	clang-tidy $(SRC) -- -I$(INC_DIR) -std=c++98
+
+include tests.mk

@@ -38,6 +38,10 @@
 *.app
 ircserv
 ircbot
+unit_tester
 
 # debug information files
 *.dwo
+
+# Goolge test files
+googletest/
