@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:04 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 00:35:06 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 04:10:25 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,7 +18,15 @@
 #include "BotClient.hpp"
 #include "utils.hpp"
 
+volatile sig_atomic_t g_shutdown = 0;
+
 namespace {
+
+void signalHandler(int signum) {
+  (void)signum;
+  g_shutdown = 1;
+}
+
 void checkUsage(int argc) {
   if (argc != 6) {
     throw std::runtime_error(
@@ -26,7 +34,11 @@ void checkUsage(int argc) {
   }
 }
 
-void setupSignalHandlers() { signal(SIGPIPE, SIG_IGN); }
+void setupSignalHandlers() {
+  signal(SIGPIPE, SIG_IGN);
+  signal(SIGINT, signalHandler);
+  signal(SIGTERM, signalHandler);
+}
 }  // namespace
 
 int main(int argc, char* argv[]) {

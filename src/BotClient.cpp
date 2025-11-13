@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 03:53:05 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 04:11:45 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netdb.h>
+#include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -25,6 +26,8 @@
 #include <stdexcept>
 
 #include "utils.hpp"
+
+extern volatile sig_atomic_t g_shutdown;
 
 namespace {
 const int kMaxEvents = 10;
@@ -173,7 +176,7 @@ void BotClient::setupEventLoop() {
 void BotClient::handleEvents() {
   struct epoll_event events[kMaxEvents];
 
-  while (running_) {
+  while (running_ && !g_shutdown) {
     int n = eventLoop_.wait(events, kMaxEvents, -1);
     if (n == -1) {
       if (errno == EINTR) continue;
@@ -194,6 +197,11 @@ void BotClient::handleEvents() {
         handleWrite();
       }
     }
+  }
+
+  if (g_shutdown) {
+    enqueueMessage("QUIT :Shutting down");
+    log(LOG_LEVEL_INFO, LOG_CATEGORY_CONNECTION, "Sending QUIT message");
   }
 }
 
