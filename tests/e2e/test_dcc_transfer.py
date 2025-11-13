@@ -131,33 +131,45 @@ def test_dcc_chat_message_forwarding(two_clients):
     assert dcc_chat_msg.params[1].endswith("\x01")
 
 
-def test_dcc_with_channel(authenticated_client, server_config):
+def test_dcc_with_channel(two_clients, server_config):
     """
     Test that DCC messages are NOT typically sent to channels.
 
     Manual reproduction with irssi:
+        Terminal 1:
         $ irssi
-        /connect localhost 6667 password testuser
+        /connect localhost 6667 password user1
         /join #test
-        Try: /dcc send #test file.txt
+        /dcc send #test file.txt
         (irssi may reject this, but server would forward if sent)
+
+        Terminal 2:
+        $ irssi
+        /connect localhost 6667 password user2
+        /join #test
+        (Should receive DCC message)
 
     Expected: Server treats it as normal PRIVMSG to channel
     Note: Most IRC clients don't allow DCC to channels, but the
     server doesn't enforce this - it's a client-side restriction.
     """
-    authenticated_client.join("#test")
-    time.sleep(0.2)
-    authenticated_client.recv_lines(timeout=0.3)
+    client1, client2 = two_clients
 
-    # Try sending DCC message to channel (unusual but not prohibited)
+    # Both users join the channel
+    client1.join("#test")
+    client2.join("#test")
+    time.sleep(0.2)
+    client1.recv_lines(timeout=0.3)
+    client2.recv_lines(timeout=0.3)
+
+    # User1 sends DCC message to channel (unusual but not prohibited)
     dcc_message = "\x01DCC SEND file.txt 2130706433 12345 1024\x01"
-    authenticated_client.privmsg("#test", dcc_message)
+    client1.privmsg("#test", dcc_message)
 
     time.sleep(0.3)
 
-    # Should receive own message back (broadcast to channel)
-    lines = authenticated_client.recv_lines(timeout=1.0)
+    # User2 should receive the DCC message (broadcast to channel members)
+    lines = client2.recv_lines(timeout=1.0)
 
     channel_msg = None
     for line in lines:
