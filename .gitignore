@@ -37,6 +37,7 @@
 *.out
 *.app
 ircserv
+ircbot
 unit_tester
 
 # debug information files

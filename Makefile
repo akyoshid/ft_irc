@@ -3,6 +3,7 @@ CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
 DEP_FLAGS = -MMD -MP
 
 NAME = ircserv
+BOT_NAME = ircbot
 BUILD_DIR = build
 INC_DIR = include
 SRC_DIR = src
@@ -20,29 +21,36 @@ SRC = \
 			$(SRC_DIR)/ChannelManager.cpp \
 			$(SRC_DIR)/ResponseFormatter.cpp \
 			$(SRC_DIR)/CommandRouter.cpp
-
 OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SRC))
 DEP = $(OBJ:.o=.d)
 
+BOT_SRC = \
+			$(SRC_DIR)/BotClient.cpp \
+			$(SRC_DIR)/bot.cpp \
+			$(SRC_DIR)/utils.cpp \
+			$(SRC_DIR)/EventLoop.cpp
+BOT_OBJ = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(BOT_SRC))
+BOT_DEP = $(BOT_OBJ:.o=.d)
+
 .PHONY: all
-all: $(NAME)
+all: $(NAME) $(BOT_NAME)
 
 $(NAME): $(OBJ)
 	$(CXX) $(CXXFLAGS) $(OBJ) -o $@
-
+$(BOT_NAME): $(BOT_OBJ)
+	$(CXX) $(CXXFLAGS) $(BOT_OBJ) -o $@
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	$(CXX) $(CXXFLAGS) $(DEP_FLAGS) -I$(INC_DIR) -c $< -o $@
-
 .PHONY: clean
 clean:
 	$(RM) -r $(BUILD_DIR)
 
--include $(DEP)
+-include $(DEP) $(BOT_DEP)
 
 .PHONY: fclean
 fclean: clean
-	$(RM) $(NAME)
+	$(RM) $(NAME) $(BOT_NAME)
 
 .PHONY: re
 re: fclean all
