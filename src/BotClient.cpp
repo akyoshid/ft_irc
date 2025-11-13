@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:35:00 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 03:03:01 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 03:22:48 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,7 @@ BotClient::BotClient(const std::string& host, const std::string& port,
       channel_(channel),
       socketFd_(INVALID_FD),
       running_(true),
+      connectionVerified_(false),
       registered_(false),
       joined_(false) {}
 
@@ -220,6 +221,15 @@ void BotClient::handleRead() {
 }
 
 void BotClient::handleWrite() {
+  if (!connectionVerified_) {
+    int error = 0;
+    socklen_t len = sizeof(error);
+    if (getsockopt(socketFd_, SOL_SOCKET, SO_ERROR, &error, &len) < 0 ||
+        error != 0) {
+      throw std::runtime_error("Connection failed");
+    }
+    connectionVerified_ = true;
+  }
   while (!writeBuffer_.empty()) {
     ssize_t bytes =
         send(socketFd_, writeBuffer_.c_str(), writeBuffer_.size(), 0);

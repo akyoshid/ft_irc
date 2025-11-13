@@ -6,7 +6,7 @@
 /*   By: akyoshid <akyoshid@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/11/13 00:34:52 by akyoshid          #+#    #+#             */
-/*   Updated: 2025/11/13 01:14:29 by akyoshid         ###   ########.fr       */
+/*   Updated: 2025/11/13 03:14:38 by akyoshid         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -61,6 +61,7 @@ class BotClient {
   std::string readBuffer_;
   std::string writeBuffer_;
   bool running_;
+  bool connectionVerified_;
   bool registered_;
   bool joined_;
 };
